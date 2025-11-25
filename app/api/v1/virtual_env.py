@@ -210,7 +210,7 @@ async def create_java_virtual_environment(
     db_case_source = db.execute(stmt).scalars().first()
     if db_case_source:
         db_case_source.venv_id = java_env_model.id
-        db_case_source.venv_version = java_env_model.java_version
+        db_case_source.venv_version = "JDK" + java_version
         db.commit()
 
     return api_response(data={
