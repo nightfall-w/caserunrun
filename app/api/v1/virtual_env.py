@@ -172,6 +172,17 @@ async def create_java_virtual_environment(
         return api_response(code=HttpErrcode.EXCEPTION,
                             message=f"执行direnv allow时发生错误: {str(e)}")
 
+    # 执行 mvn install -DskipTests 安装项目依赖
+    try:
+        result = subprocess.run(["mvn", "install", "-DskipTests"],
+                                cwd=project_root,
+                                capture_output=True,
+                                text=True)
+        if result.returncode != 0:
+            return api_response(code=HttpErrcode.EXCEPTION, message=f"mvn install -DskipTests执行失败: {result.stderr}")
+    except Exception as e:
+        return api_response(code=HttpErrcode.EXCEPTION, message=f"执行mvn install -DskipTests时发生错误: {str(e)}")
+
     return api_response(data={
         "envrc_path": envrc_path,
         "envrc_content": envrc_content,
