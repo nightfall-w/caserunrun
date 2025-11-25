@@ -176,7 +176,6 @@ async def create_java_virtual_environment(
         return api_response(code=HttpErrcode.EXCEPTION,
                             message=f"执行direnv allow时发生错误: {str(e)}")
 
-    # 执行 mvn install -DskipTests 安装项目依赖
     try:
         # 先取消设置MAVEN_OPTS环境变量，再执行mvn clean
         clean_result = subprocess.run(["mvn", "clean", "-B"],
@@ -190,8 +189,25 @@ async def create_java_virtual_environment(
     except Exception as e:
         return api_response(code=HttpErrcode.EXCEPTION, message=f"执行mvn clean时发生错误: {str(e)}")
 
+    # 再次执行 direnv allow 命令使.envrc文件生效
     try:
-        # 再执行mvn install -DskipTests
+        result = subprocess.run(["direnv", "allow", project_root],
+                                cwd=project_root,
+                                capture_output=True,
+                                check=True,
+                                text=True)
+        if result.returncode != 0:
+            return api_response(code=HttpErrcode.EXCEPTION,
+                                message=f"direnv allow执行失败: {result.stderr}")
+    except FileNotFoundError:
+        return api_response(code=HttpErrcode.EXCEPTION,
+                            message="未找到direnv命令，请确保已安装direnv")
+    except Exception as e:
+        return api_response(code=HttpErrcode.EXCEPTION,
+                            message=f"执行direnv allow时发生错误: {str(e)}")
+
+    try:
+        # 执行 mvn install -DskipTests 安装项目依赖
         result = subprocess.run(["mvn", "install", "-B", "-DskipTests"],
                                 cwd=project_root,
                                 capture_output=True,
