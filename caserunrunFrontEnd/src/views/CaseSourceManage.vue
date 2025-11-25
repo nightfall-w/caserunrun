@@ -90,6 +90,7 @@
           header-row-class-name="table-header"
           row-class-name="table-row"
           height="calc(100vh - 180px)"
+          empty-text="暂无用例源数据，请添加~"
         >
           <el-table-column prop="specificType" label="测试类型" width="90" align="center">
             <template #default="scope">
@@ -155,9 +156,19 @@
                   size="small"
                   type="warning"
                   link
-                  @click="openVirtualEnvDrawer(scope.row)"
+                  @click="openPythonVirtualEnvDrawer(scope.row)"
                   class="action-button env-btn"
                   v-if="scope.row.caseType === 'pytest'"
+                >
+                  配置虚拟环境
+                </el-button>
+                <el-button
+                  size="small"
+                  type="warning"
+                  link
+                  @click="openJavaVirtualEnvDrawer(scope.row)"
+                  class="action-button env-btn"
+                  v-if="scope.row.caseType === 'testng'"
                 >
                   配置虚拟环境
                 </el-button>
@@ -174,20 +185,6 @@
             </template>
           </el-table-column>
         </el-table>
-
-        <!-- 空状态 -->
-        <div v-if="!loading && filteredCaseSourceList.length === 0" class="empty-state">
-          <el-icon class="empty-icon">
-            <Document/>
-          </el-icon>
-          <p class="empty-text">暂无用例源数据</p>
-          <el-button type="primary" @click="openCreateDialog" class="empty-button" size="small">
-            <el-icon>
-              <Plus/>
-            </el-icon>
-            添加第一个用例源
-          </el-button>
-        </div>
       </div>
     </div>
 
@@ -343,23 +340,23 @@
       </div>
     </el-dialog>
 
-    <!-- 虚拟环境抽屉 -->
+    <!-- Python虚拟环境抽屉 -->
     <el-drawer
-      v-model="virtualEnvDrawerVisible"
+      v-model="pythonVirtualEnvDrawerVisible"
       direction="rtl"
       size="50%"
       class="virtual-env-drawer"
     >
       <template #header>
         <div class="drawer-header">
-          <h2 class="drawer-title">创建虚拟环境</h2>
-          <p class="drawer-subtitle">为 "{{ currentCaseSource?.caseProjectName }}"
+          <h2 class="drawer-title">创建Python虚拟环境</h2>
+          <p class="drawer-subtitle">为 "{{ currentPythonCaseSource?.caseProjectName }}"
             配置Python虚拟环境</p>
         </div>
       </template>
 
       <div class="drawer-content">
-        <el-steps :active="activeStep" finish-status="success" class="env-setup-steps">
+        <el-steps :active="pythonActiveStep" finish-status="success" class="env-setup-steps">
           <el-step title="选择Python版本"/>
           <el-step title="选择依赖文件"/>
           <el-step title="确认配置"/>
@@ -367,21 +364,21 @@
 
         <div class="step-content">
           <!-- 步骤1: 选择Python版本 -->
-          <div v-show="activeStep === 0" class="step-panel">
+          <div v-show="pythonActiveStep === 0" class="step-panel">
             <div class="step-title">
               <h3>选择Python版本</h3>
               <p>请选择用于创建虚拟环境的Python版本</p>
             </div>
 
             <el-form
-              ref="step1FormRef"
-              :model="virtualEnvForm"
-              :rules="step1Rules"
+              ref="pythonStep1FormRef"
+              :model="pythonVirtualEnvForm"
+              :rules="pythonStep1Rules"
               class="step-form"
             >
               <el-form-item prop="pythonVersion">
                 <el-select
-                  v-model="virtualEnvForm.pythonVersion"
+                  v-model="pythonVirtualEnvForm.pythonVersion"
                   placeholder="请选择Python版本"
                   style="width: 100%"
                   size="large"
@@ -399,13 +396,13 @@
               </el-form-item>
             </el-form>
 
-            <div class="version-info" v-if="virtualEnvForm.pythonVersion">
+            <div class="version-info" v-if="pythonVirtualEnvForm.pythonVersion">
               <el-card class="version-card">
                 <div class="version-card-header">
                   <el-icon class="version-icon">
                     <Promotion/>
                   </el-icon>
-                  <h4>Python {{ virtualEnvForm.pythonVersion }}</h4>
+                  <h4>Python {{ pythonVirtualEnvForm.pythonVersion }}</h4>
                 </div>
                 <p class="version-description">
                   将使用此版本创建独立的Python虚拟环境，确保测试运行的隔离性和一致性。
@@ -415,22 +412,22 @@
           </div>
 
           <!-- 步骤2: 选择依赖文件 -->
-          <div v-show="activeStep === 1" class="step-panel">
+          <div v-show="pythonActiveStep === 1" class="step-panel">
             <div class="step-title">
               <h3>选择依赖文件</h3>
               <p>请选择项目中的依赖文件，例：requirements.txt</p>
             </div>
 
             <el-form
-              ref="step2FormRef"
-              :model="virtualEnvForm"
-              :rules="step2Rules"
+              ref="pythonStep2FormRef"
+              :model="pythonVirtualEnvForm"
+              :rules="pythonStep2Rules"
               class="step-form"
             >
               <el-form-item prop="requirementsPath">
                 <el-tree-select
-                  v-model="virtualEnvForm.requirementsPath"
-                  :data="projectFileTree"
+                  v-model="pythonVirtualEnvForm.requirementsPath"
+                  :data="pythonProjectFileTree"
                   node-key="path"
                   :props="treeProps"
                   check-strictly
@@ -443,12 +440,12 @@
               </el-form-item>
             </el-form>
 
-            <div class="file-preview-actions" v-if="virtualEnvForm.requirementsPath">
+            <div class="file-preview-actions" v-if="pythonVirtualEnvForm.requirementsPath">
               <el-button
                 type="primary"
                 link
-                @click="previewFileContent(virtualEnvForm.requirementsPath)"
-                :loading="filePreviewLoading"
+                @click="previewFileContent(pythonVirtualEnvForm.requirementsPath)"
+                :loading="pythonFilePreviewLoading"
                 class="preview-button"
               >
                 <el-icon>
@@ -458,24 +455,24 @@
               </el-button>
             </div>
 
-            <div class="file-preview-container" v-if="filePreviewVisible">
+            <div class="file-preview-container" v-if="pythonFilePreviewVisible">
               <el-card class="preview-card">
                 <div class="preview-card-header">
-                  <h4>{{ selectedFilePath }}</h4>
+                  <h4>{{ pythonSelectedFilePath }}</h4>
                   <el-tag type="info" size="small">依赖文件</el-tag>
                 </div>
                 <div class="preview-content-wrapper">
-                  <pre class="file-content-preview">{{ fileContent }}</pre>
+                  <pre class="file-content-preview">{{ pythonFileContent }}</pre>
                 </div>
-                <div class="preview-card-footer" v-if="fileContent">
-                  <span class="line-count">共 {{ fileContent.split('\n').length }} 行</span>
+                <div class="preview-card-footer" v-if="pythonFileContent">
+                  <span class="line-count">共 {{ pythonFileContent.split('\n').length }} 行</span>
                 </div>
               </el-card>
             </div>
           </div>
 
           <!-- 步骤3: 确认配置 -->
-          <div v-show="activeStep === 2 || activeStep === 3" class="step-panel">
+          <div v-show="pythonActiveStep === 2 || pythonActiveStep === 3" class="step-panel">
             <div class="step-title">
               <h3>确认配置</h3>
               <p>请确认以下虚拟环境配置信息</p>
@@ -484,29 +481,29 @@
             <!-- 配置信息展示 -->
             <el-descriptions :column="2" border class="config-descriptions">
               <el-descriptions-item label="项目名称">{{
-                  currentCaseSource?.caseProjectName
+                  currentPythonCaseSource?.caseProjectName
                 }}
               </el-descriptions-item>
               <el-descriptions-item label="Python版本">Python {{
-                  virtualEnvForm.pythonVersion
+                  pythonVirtualEnvForm.pythonVersion
                 }}
               </el-descriptions-item>
               <el-descriptions-item label="依赖文件">{{
-                  virtualEnvForm.requirementsPath
+                  pythonVirtualEnvForm.requirementsPath
                 }}
               </el-descriptions-item>
               <el-descriptions-item label="虚拟环境名" class-name="summary-path">
-                {{ currentCaseSource.workspaceId }}_{{
-                  currentCaseSource?.caseSourceValue.projectId
+                {{ currentPythonCaseSource.workspaceId }}_{{
+                  currentPythonCaseSource?.caseSourceValue.projectId
                 }}_{{
-                  currentCaseSource?.caseProjectName
-                }}_py{{ virtualEnvForm.pythonVersion.replace(/\./g, '_') }}
+                  currentPythonCaseSource?.caseProjectName
+                }}_py{{ pythonVirtualEnvForm.pythonVersion.replace(/\./g, '_') }}
               </el-descriptions-item>
             </el-descriptions>
 
             <!-- 成功时显示的提示信息 -->
             <el-alert
-              v-if="!virtualEnvCreationError && !virtualEnvCreationSuccess"
+              v-if="!pythonVirtualEnvCreationError && !pythonVirtualEnvCreationSuccess"
               title="创建虚拟环境"
               description="确认配置无误后，点击'创建虚拟环境'按钮开始创建。此过程可能需要几分钟时间，请耐心等待。"
               type="info"
@@ -515,27 +512,31 @@
             />
 
             <!-- 失败时显示的错误信息 -->
-            <div v-else-if="virtualEnvCreationError" class="error-container">
+            <div v-else-if="pythonVirtualEnvCreationError" class="error-container">
               <el-card class="error-card">
                 <div class="error-card-header">
                   <h4>虚拟环境创建失败</h4>
                   <el-tag type="danger" size="small">错误详情</el-tag>
                 </div>
                 <div class="error-content-wrapper">
-                  <pre class="error-content-preview">{{ virtualEnvCreationErrorMessage }}</pre>
+                  <pre class="error-content-preview">{{
+                      pythonVirtualEnvCreationErrorMessage
+                    }}</pre>
                 </div>
               </el-card>
             </div>
 
             <!-- 成功时显示的日志信息 -->
-            <div v-else-if="virtualEnvCreationSuccess" class="success-container">
+            <div v-else-if="pythonVirtualEnvCreationSuccess" class="success-container">
               <el-card class="success-card">
                 <div class="success-card-header">
                   <h4>虚拟环境创建成功</h4>
                   <el-tag type="success" size="small">执行日志</el-tag>
                 </div>
                 <div class="success-content-wrapper">
-                  <pre class="success-content-preview">{{ virtualEnvCreationSuccessMessage }}</pre>
+                  <pre class="success-content-preview">{{
+                      pythonVirtualEnvCreationSuccessMessage
+                    }}</pre>
                 </div>
               </el-card>
             </div>
@@ -545,30 +546,30 @@
 
       <template #footer>
         <div class="drawer-footer">
-          <el-button @click="handleCancelVirtualEnv" class="footer-button cancel-button">
+          <el-button @click="handleCancelPythonVirtualEnv" class="footer-button cancel-button">
             取消
           </el-button>
           <div class="navigation-buttons">
             <el-button
-              v-if="activeStep > 0"
-              @click="prevStep"
+              v-if="pythonActiveStep > 0"
+              @click="pythonPrevStep"
               class="footer-button prev-button"
             >
               上一步
             </el-button>
             <el-button
-              v-if="activeStep < 2"
+              v-if="pythonActiveStep < 2"
               type="primary"
-              @click="nextStep"
+              @click="pythonNextStep"
               class="footer-button next-button"
             >
               下一步
             </el-button>
             <el-button
-              v-if="activeStep === 2"
+              v-if="pythonActiveStep === 2"
               type="success"
-              @click="handleCreateVirtualEnv"
-              :loading="virtualEnvSubmitLoading"
+              @click="handleCreatePythonVirtualEnv"
+              :loading="pythonVirtualEnvSubmitLoading"
               class="footer-button confirm-button"
             >
               <el-icon>
@@ -577,9 +578,283 @@
               创建虚拟环境
             </el-button>
             <el-button
-              v-if="[2, 3].includes(activeStep) && virtualEnvCreationSuccess"
+              v-if="[2, 3].includes(pythonActiveStep) && pythonVirtualEnvCreationSuccess"
               type="success"
-              @click="handleFinish"
+              @click="handleFinish('python')"
+              class="footer-button confirm-button"
+            >
+              <el-icon>
+                <Check/>
+              </el-icon>
+              完成
+            </el-button>
+          </div>
+        </div>
+      </template>
+    </el-drawer>
+
+    <!-- Java虚拟环境抽屉 -->
+    <el-drawer
+      v-model="javaVirtualEnvDrawerVisible"
+      direction="rtl"
+      size="50%"
+      class="virtual-env-drawer"
+    >
+      <template #header>
+        <div class="drawer-header">
+          <h2 class="drawer-title">创建Java虚拟环境</h2>
+          <p class="drawer-subtitle">为 "{{ currentJavaCaseSource?.caseProjectName }}"
+            配置Java虚拟环境</p>
+        </div>
+      </template>
+
+      <div class="drawer-content">
+        <el-steps :active="javaActiveStep" finish-status="success" class="env-setup-steps">
+          <el-step title="选择JDK版本"/>
+          <el-step title="Maven设置"/>
+          <el-step title="确认配置"/>
+        </el-steps>
+
+        <div class="step-content">
+          <!-- 步骤1: 选择JDK版本 -->
+          <div v-show="javaActiveStep === 0" class="step-panel">
+            <div class="step-title">
+              <h3>选择JDK版本</h3>
+              <p>请选择用于创建Java虚拟环境的JDK版本</p>
+            </div>
+
+            <el-form
+              ref="javaStep1FormRef"
+              :model="javaVirtualEnvForm"
+              :rules="javaStep1Rules"
+              class="step-form"
+            >
+              <el-form-item prop="javaVersion">
+                <el-select
+                  v-model="javaVirtualEnvForm.javaVersion"
+                  placeholder="请选择JDK版本"
+                  style="width: 100%"
+                  size="large"
+                  class="java-version-select"
+                >
+                  <el-option
+                    v-for="version in javaVersions"
+                    :key="version.version"
+                    :label="`JDK ${version.version}`"
+                    :value="version.version"
+                  >
+                    <span class="version-option-label">JDK {{ version.version }}</span>
+                  </el-option>
+                </el-select>
+              </el-form-item>
+            </el-form>
+
+            <div class="version-info" v-if="javaVirtualEnvForm.javaVersion">
+              <el-card class="version-card">
+                <div class="version-card-header">
+                  <el-icon class="version-icon">
+                    <Promotion/>
+                  </el-icon>
+                  <h4>JDK {{ javaVirtualEnvForm.javaVersion }}</h4>
+                </div>
+                <p class="version-description">
+                  将使用此版本创建独立的Java虚拟环境，确保测试运行的隔离性和一致性。
+                </p>
+              </el-card>
+            </div>
+          </div>
+
+          <!-- 步骤2: Maven设置 -->
+          <div v-show="javaActiveStep === 1" class="step-panel">
+            <div class="step-title">
+              <h3>Maven设置</h3>
+              <p>请选择Maven配置文件或使用默认配置</p>
+            </div>
+
+            <el-form
+              ref="javaStep2FormRef"
+              :model="javaVirtualEnvForm"
+              :rules="javaStep2Rules"
+              class="step-form"
+            >
+              <el-form-item prop="mavenConfigPath">
+                <el-tree-select
+                  v-model="javaVirtualEnvForm.mavenConfigPath"
+                  :data="javaProjectFileTree"
+                  node-key="path"
+                  :props="treeProps"
+                  check-strictly
+                  :default-expand-all="false"
+                  style="width: 100%"
+                  placeholder="请选择Maven配置文件(settings.xml)，留空则使用默认配置"
+                  size="large"
+                  class="file-tree-select"
+                />
+              </el-form-item>
+            </el-form>
+
+            <div class="maven-config-actions">
+              <el-button
+                type="primary"
+                link
+                @click="loadDefaultMavenConfig"
+                :loading="javaFilePreviewLoading"
+                class="preview-button"
+              >
+                查看默认Maven配置
+              </el-button>
+
+              <el-button
+                v-if="javaVirtualEnvForm.mavenConfigPath"
+                type="primary"
+                link
+                @click="clearMavenConfigSelection"
+                class="preview-button"
+              >
+                使用默认配置
+              </el-button>
+
+              <el-button
+                v-if="javaVirtualEnvForm.mavenConfigPath"
+                type="primary"
+                link
+                @click="previewJavaFileContent(javaVirtualEnvForm.mavenConfigPath)"
+                :loading="javaFilePreviewLoading"
+                class="preview-button"
+              >
+                <el-icon>
+                  <View/>
+                </el-icon>
+                预览配置文件
+              </el-button>
+            </div>
+
+            <div class="file-preview-container" v-if="javaFilePreviewVisible">
+              <el-card class="preview-card">
+                <div class="preview-card-header">
+                  <h4>{{ javaSelectedFilePath }}</h4>
+                  <el-tag type="info" size="small">Maven配置文件</el-tag>
+                </div>
+                <div class="preview-content-wrapper">
+                  <pre class="file-content-preview">{{ javaFileContent }}</pre>
+                </div>
+                <div class="preview-card-footer" v-if="javaFileContent">
+                  <span class="line-count">共 {{ javaFileContent.split('\n').length }} 行</span>
+                </div>
+              </el-card>
+            </div>
+          </div>
+
+          <!-- 步骤3: 确认配置 -->
+          <div v-show="javaActiveStep === 2 || javaActiveStep === 3" class="step-panel">
+            <div class="step-title">
+              <h3>确认配置</h3>
+              <p>请确认以下虚拟环境配置信息</p>
+            </div>
+
+            <!-- 配置信息展示 -->
+            <el-descriptions :column="2" border class="config-descriptions">
+              <el-descriptions-item label="项目名称">{{
+                  currentJavaCaseSource?.caseProjectName
+                }}
+              </el-descriptions-item>
+              <el-descriptions-item label="JDK版本">JDK {{
+                  javaVirtualEnvForm.javaVersion
+                }}
+              </el-descriptions-item>
+              <el-descriptions-item label="Maven配置">
+                <span v-if="javaVirtualEnvForm.mavenConfigPath">{{
+                    javaVirtualEnvForm.mavenConfigPath
+                  }}</span>
+                <span v-else class="default-config-text">默认配置</span>
+              </el-descriptions-item>
+              <el-descriptions-item label="虚拟环境名" class-name="summary-path">
+                {{ currentJavaCaseSource.workspaceId }}_{{
+                  currentJavaCaseSource?.caseSourceValue.projectId
+                }}_{{
+                  currentJavaCaseSource?.caseProjectName
+                }}_jdk{{ javaVirtualEnvForm.javaVersion.replace(/\./g, '_') }}
+              </el-descriptions-item>
+            </el-descriptions>
+
+            <!-- 成功时显示的提示信息 -->
+            <el-alert
+              v-if="!javaVirtualEnvCreationError && !javaVirtualEnvCreationSuccess"
+              title="创建虚拟环境"
+              description="确认配置无误后，点击'创建虚拟环境'按钮开始创建。此过程可能需要几分钟时间，请耐心等待。"
+              type="info"
+              show-icon
+              class="creation-info"
+            />
+
+            <!-- 失败时显示的错误信息 -->
+            <div v-else-if="javaVirtualEnvCreationError" class="error-container">
+              <el-card class="error-card">
+                <div class="error-card-header">
+                  <h4>虚拟环境创建失败</h4>
+                  <el-tag type="danger" size="small">错误详情</el-tag>
+                </div>
+                <div class="error-content-wrapper">
+                  <pre class="error-content-preview">{{ javaVirtualEnvCreationErrorMessage }}</pre>
+                </div>
+              </el-card>
+            </div>
+
+            <!-- 成功时显示的日志信息 -->
+            <div v-else-if="javaVirtualEnvCreationSuccess" class="success-container">
+              <el-card class="success-card">
+                <div class="success-card-header">
+                  <h4>虚拟环境创建成功</h4>
+                  <el-tag type="success" size="small">执行日志</el-tag>
+                </div>
+                <div class="success-content-wrapper">
+                  <pre class="success-content-preview">{{
+                      javaVirtualEnvCreationSuccessMessage
+                    }}</pre>
+                </div>
+              </el-card>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <template #footer>
+        <div class="drawer-footer">
+          <el-button @click="handleCancelJavaVirtualEnv" class="footer-button cancel-button">
+            取消
+          </el-button>
+          <div class="navigation-buttons">
+            <el-button
+              v-if="javaActiveStep > 0"
+              @click="javaPrevStep"
+              class="footer-button prev-button"
+            >
+              上一步
+            </el-button>
+            <el-button
+              v-if="javaActiveStep < 2"
+              type="primary"
+              @click="javaNextStep"
+              class="footer-button next-button"
+            >
+              下一步
+            </el-button>
+            <el-button
+              v-if="javaActiveStep === 2"
+              type="success"
+              @click="handleCreateJavaVirtualEnv"
+              :loading="javaVirtualEnvSubmitLoading"
+              class="footer-button confirm-button"
+            >
+              <el-icon>
+                <Check/>
+              </el-icon>
+              创建虚拟环境
+            </el-button>
+            <el-button
+              v-if="[2, 3].includes(javaActiveStep) && javaVirtualEnvCreationSuccess"
+              type="success"
+              @click="handleFinish('java')"
               class="footer-button confirm-button"
             >
               <el-icon>
@@ -604,12 +879,15 @@ import {ElMessage, ElMessageBox} from 'element-plus'
 import {
   bindCaseSource,
   createPythonVirtualEnv,
+  createJavaVirtualEnv,
   deleteCaseSource,
   getCaseSourceList,
   getFileContent,
   getGitTokenVerifiedInfo,
   getProjectFileTree,
   getPythonList,
+  getJavaList,
+  getDefaultMavenConfig,
   updateCaseSource
 } from '@/network/api.js'
 import {
@@ -665,25 +943,42 @@ const pytestPath = ref('')
 // 保存原始数据用于比较
 const originalSourceData = ref(null)
 
-// 虚拟环境相关
-const virtualEnvDrawerVisible = ref(false)
-const activeStep = ref(0)
-const step1FormRef = ref()
-const step2FormRef = ref()
-const virtualEnvSubmitLoading = ref(false)
-const currentCaseSource = ref(null)
+// Python虚拟环境相关
+const pythonVirtualEnvDrawerVisible = ref(false)
+const pythonActiveStep = ref(0)
+const pythonStep1FormRef = ref()
+const pythonStep2FormRef = ref()
+const pythonVirtualEnvSubmitLoading = ref(false)
+const currentPythonCaseSource = ref(null)
 const pythonVersions = ref([])
 const pythonVersionsLoading = ref(false)
-const projectFileTree = ref([])
-const filePreviewVisible = ref(false)
-const filePreviewLoading = ref(false)
-const selectedFilePath = ref('')
-const fileContent = ref('')
-const virtualEnvCreationError = ref(false) // 新增：虚拟环境创建错误状态
-const virtualEnvCreationErrorMessage = ref('') // 新增：虚拟环境创建错误信息
-const virtualEnvCreationSuccess = ref(false) // 新增：虚拟环境创建成功状态
-const virtualEnvCreationSuccessMessage = ref('') // 新增：虚拟环境创建成功信息
+const pythonProjectFileTree = ref([])
+const pythonFilePreviewVisible = ref(false)
+const pythonFilePreviewLoading = ref(false)
+const pythonSelectedFilePath = ref('')
+const pythonFileContent = ref('')
+const pythonVirtualEnvCreationError = ref(false)
+const pythonVirtualEnvCreationErrorMessage = ref('')
+const pythonVirtualEnvCreationSuccess = ref(false)
+const pythonVirtualEnvCreationSuccessMessage = ref('')
 
+// Java虚拟环境相关
+const javaVirtualEnvDrawerVisible = ref(false)
+const javaActiveStep = ref(0)
+const javaStep1FormRef = ref()
+const javaStep2FormRef = ref() // 新增：Java第二步表单引用
+const javaVirtualEnvSubmitLoading = ref(false)
+const currentJavaCaseSource = ref(null)
+const javaVersions = ref([])
+const javaProjectFileTree = ref([]) // 新增：Java项目文件树
+const javaFilePreviewVisible = ref(false) // 新增：Java文件预览可见性
+const javaFilePreviewLoading = ref(false) // 新增：Java文件预览加载状态
+const javaSelectedFilePath = ref('') // 新增：Java选中文件路径
+const javaFileContent = ref('') // 新增：Java文件内容
+const javaVirtualEnvCreationError = ref(false)
+const javaVirtualEnvCreationErrorMessage = ref('')
+const javaVirtualEnvCreationSuccess = ref(false)
+const javaVirtualEnvCreationSuccessMessage = ref('')
 
 const treeProps = {
   label: 'label',
@@ -691,11 +986,40 @@ const treeProps = {
   isLeaf: 'isLeaf'
 }
 
-const virtualEnvForm = reactive({
+const pythonVirtualEnvForm = reactive({
   pythonVersion: '',
   requirementsPath: ''
 })
 
+const javaVirtualEnvForm = reactive({
+  javaVersion: '',
+  mavenConfigPath: '' // 新增：Maven配置路径
+})
+
+// 验证Maven配置文件是否为settings.xml
+const validateMavenConfigFile = (rule, value, callback) => {
+  // 如果没有选择文件，则使用默认配置，这是允许的
+  if (!value) {
+    callback()
+    return
+  }
+
+  // 如果选择了文件，验证是否为settings.xml
+  if (!value.endsWith('settings.xml')) {
+    callback(new Error('Maven配置文件必须是settings.xml'))
+  } else {
+    callback()
+  }
+}
+
+const javaStep2Rules = {
+  mavenConfigPath: [
+    {
+      validator: validateMavenConfigFile,
+      trigger: 'change'
+    }
+  ]
+}
 // 测试类型选项
 const specificTypeOptions = [
   {label: 'Web', value: 10},
@@ -730,15 +1054,21 @@ const sourceFormRules = {
   ]
 }
 
-const step1Rules = {
+const pythonStep1Rules = {
   pythonVersion: [
     {required: true, message: '请选择Python版本', trigger: 'change'}
   ]
 }
 
-const step2Rules = {
+const pythonStep2Rules = {
   requirementsPath: [
     {required: true, message: '请选择requirements.txt文件', trigger: 'change'}
+  ]
+}
+
+const javaStep1Rules = {
+  javaVersion: [
+    {required: true, message: '请选择JDK版本', trigger: 'change'}
   ]
 }
 
@@ -1133,37 +1463,76 @@ const handleDeleteCaseSource = async (row) => {
   }
 }
 
-// 打开虚拟环境抽屉
-const openVirtualEnvDrawer = async (row) => {
-  currentCaseSource.value = row
-  virtualEnvDrawerVisible.value = true
-  activeStep.value = 0
+// 打开Python虚拟环境抽屉
+const openPythonVirtualEnvDrawer = async (row) => {
+  currentPythonCaseSource.value = row
+  pythonVirtualEnvDrawerVisible.value = true
+  pythonActiveStep.value = 0
 
   // 重置表单
-  virtualEnvForm.pythonVersion = ''
-  virtualEnvForm.requirementsPath = ''
-  projectFileTree.value = []
-  filePreviewVisible.value = false
-  fileContent.value = ''
-  selectedFilePath.value = ''
-  virtualEnvCreationError.value = false
-  virtualEnvCreationErrorMessage.value = ''
-  virtualEnvCreationSuccess.value = false
-  virtualEnvCreationSuccessMessage.value = ''
+  pythonVirtualEnvForm.pythonVersion = ''
+  pythonVirtualEnvForm.requirementsPath = ''
+  pythonProjectFileTree.value = []
+  pythonFilePreviewVisible.value = false
+  pythonFileContent.value = ''
+  pythonSelectedFilePath.value = ''
+  pythonVirtualEnvCreationError.value = false
+  pythonVirtualEnvCreationErrorMessage.value = ''
+  pythonVirtualEnvCreationSuccess.value = false
+  pythonVirtualEnvCreationSuccessMessage.value = ''
+
+
   // 重置表单验证状态
   nextTick(() => {
-    if (step1FormRef.value) {
-      step1FormRef.value.resetFields()
+    if (pythonStep1FormRef.value) {
+      pythonStep1FormRef.value.resetFields()
     }
-    if (step2FormRef.value) {
-      step2FormRef.value.resetFields()
+    if (pythonStep2FormRef.value) {
+      pythonStep2FormRef.value.resetFields()
+    }
+    if (javaStep1FormRef.value) {
+      javaStep1FormRef.value.resetFields()
+    }
+    if (javaStep2FormRef.value) {
+      javaStep2FormRef.value.resetFields()
     }
   })
+
   // 获取Python版本列表
   await fetchPythonVersions()
 
   // 获取项目文件树
-  await fetchProjectFileTree(row.caseSourceValue.projectId)
+  await fetchProjectFileTree(row.caseSourceValue.projectId, 'python')
+}
+
+// 打开Java虚拟环境抽屉
+const openJavaVirtualEnvDrawer = async (row) => {
+  currentJavaCaseSource.value = row
+  javaVirtualEnvDrawerVisible.value = true
+  javaActiveStep.value = 0
+
+  // 重置表单
+  javaVirtualEnvForm.javaVersion = ''
+  javaVirtualEnvForm.mavenConfigPath = ''
+  javaProjectFileTree.value = []
+  javaFilePreviewVisible.value = false
+  javaFileContent.value = ''
+  javaSelectedFilePath.value = ''
+  javaVirtualEnvCreationError.value = false
+  javaVirtualEnvCreationErrorMessage.value = ''
+  javaVirtualEnvCreationSuccess.value = false
+  javaVirtualEnvCreationSuccessMessage.value = ''
+
+  // 重置表单验证状态
+  nextTick(() => {
+    if (javaStep1FormRef.value) {
+      javaStep1FormRef.value.resetFields()
+    }
+  })
+
+  // 获取Java版本列表
+  await fetchJavaVersions()
+  await fetchProjectFileTree(row.caseSourceValue.projectId, 'java')
 }
 
 // 获取Python版本列表
@@ -1183,15 +1552,33 @@ const fetchPythonVersions = async () => {
   }
 }
 
+// 获取Java版本列表
+const fetchJavaVersions = async () => {
+  try {
+    const res = await getJavaList()
+    if (res.code === 0) {
+      javaVersions.value = res.data.versions || []
+    } else {
+      ElMessage.error(res.message || '获取Java版本列表失败')
+    }
+  } catch (error) {
+    ElMessage.error('获取Java版本列表失败: ' + error.message)
+  }
+}
+
 // 获取项目文件树
-const fetchProjectFileTree = async (projectId) => {
+const fetchProjectFileTree = async (projectId, type) => {
   try {
     const res = await getProjectFileTree({
       workspace_id: route.params.id,
       git_project_id: projectId
     })
     if (res.code === 0) {
-      projectFileTree.value = res.data || []
+      if (type === 'python') {
+        pythonProjectFileTree.value = res.data || []
+      } else if (type === 'java') {
+        javaProjectFileTree.value = res.data || []
+      }
     } else {
       ElMessage.error(res.message || '获取项目文件树失败')
     }
@@ -1200,117 +1587,277 @@ const fetchProjectFileTree = async (projectId) => {
   }
 }
 
+
 // 预览文件内容
 const previewFileContent = async (filePath) => {
-  filePreviewLoading.value = true
-  filePreviewVisible.value = false
+  pythonFilePreviewLoading.value = true
+  pythonFilePreviewVisible.value = false
   try {
     const params = {
       workspace_id: route.params.id,
-      git_project_id: currentCaseSource.value.caseSourceValue.projectId,
+      git_project_id: currentPythonCaseSource.value.caseSourceValue.projectId,
       file_path: filePath
     }
 
     const res = await getFileContent(params)
     if (res.code === 0) {
-      selectedFilePath.value = filePath
-      fileContent.value = res.data?.content || ''
-      filePreviewVisible.value = true
+      pythonSelectedFilePath.value = filePath
+      pythonFileContent.value = res.data?.content || ''
+      pythonFilePreviewVisible.value = true
     } else {
       ElMessage.error(res.message || '获取文件内容失败')
     }
   } catch (error) {
     ElMessage.error('获取文件内容失败: ' + error.message)
   } finally {
-    filePreviewLoading.value = false
+    pythonFilePreviewLoading.value = false
   }
 }
 
-// 下一步
-const nextStep = async () => {
-  if (activeStep.value === 0) {
+// Python虚拟环境下一步
+const pythonNextStep = async () => {
+  if (pythonActiveStep.value === 0) {
     try {
-      await step1FormRef.value.validate()
-      activeStep.value++
+      await pythonStep1FormRef.value.validate()
+      pythonActiveStep.value++
     } catch (error) {
       ElMessage.error('请先选择Python版本')
     }
-  } else if (activeStep.value === 1) {
+  } else if (pythonActiveStep.value === 1) {
     try {
-      await step2FormRef.value.validate()
-      activeStep.value++
+      await pythonStep2FormRef.value.validate()
+      pythonActiveStep.value++
     } catch (error) {
       ElMessage.error('请先选择requirements.txt文件')
     }
   }
 }
 
-// 上一步
-const prevStep = () => {
-  if (activeStep.value > 0) {
-    activeStep.value--
-    // 清除错误和成功状态
-    if (activeStep.value < 2) {
-      virtualEnvCreationError.value = false
-      virtualEnvCreationErrorMessage.value = ''
-      virtualEnvCreationSuccess.value = false
-      virtualEnvCreationSuccessMessage.value = ''
+// 预览Java文件内容
+const previewJavaFileContent = async (filePath) => {
+  javaFilePreviewLoading.value = true
+  javaFilePreviewVisible.value = false
+  try {
+    const params = {
+      workspace_id: route.params.id,
+      git_project_id: currentJavaCaseSource.value.caseSourceValue.projectId,
+      file_path: filePath
+    }
+
+    const res = await getFileContent(params)
+    if (res.code === 0) {
+      javaSelectedFilePath.value = filePath
+      javaFileContent.value = res.data?.content || ''
+      javaFilePreviewVisible.value = true
+    } else {
+      ElMessage.error(res.message || '获取文件内容失败')
+    }
+  } catch (error) {
+    ElMessage.error('获取文件内容失败: ' + error.message)
+  } finally {
+    javaFilePreviewLoading.value = false
+  }
+}
+
+// Java虚拟环境下一步
+const javaNextStep = async () => {
+  if (javaActiveStep.value === 0) {
+    try {
+      await javaStep1FormRef.value.validate()
+      javaActiveStep.value++
+    } catch (error) {
+      ElMessage.error('请先选择JDK版本')
+    }
+  } else if (javaActiveStep.value === 1) {
+    try {
+      await javaStep2FormRef.value.validate()
+      javaActiveStep.value++
+    } catch (error) {
+      if (error && error.message) {
+        ElMessage.error(error.message)
+      } else {
+        ElMessage.error('请先选择正确的Maven配置文件(settings.xml)')
+      }
     }
   }
 }
 
-// 取消虚拟环境创建
-const handleCancelVirtualEnv = () => {
-  virtualEnvDrawerVisible.value = false
-  activeStep.value = 0
 
-  // 重置表单验证状态
-  if (step1FormRef.value) {
-    step1FormRef.value.resetFields()
-  }
-  if (step2FormRef.value) {
-    step2FormRef.value.resetFields()
+// Python虚拟环境上一步
+const pythonPrevStep = () => {
+  if (pythonActiveStep.value > 0) {
+    pythonActiveStep.value--
+    // 清除错误和成功状态
+    if (pythonActiveStep.value < 2) {
+      pythonVirtualEnvCreationError.value = false
+      pythonVirtualEnvCreationErrorMessage.value = ''
+      pythonVirtualEnvCreationSuccess.value = false
+      pythonVirtualEnvCreationSuccessMessage.value = ''
+    }
   }
 }
 
-// 创建虚拟环境
-const handleCreateVirtualEnv = async () => {
+// Java虚拟环境上一步
+const javaPrevStep = () => {
+  if (javaActiveStep.value > 0) {
+    javaActiveStep.value--
+    // 清除错误和成功状态
+    if (javaActiveStep.value < 2) {
+      javaVirtualEnvCreationError.value = false
+      javaVirtualEnvCreationErrorMessage.value = ''
+      javaVirtualEnvCreationSuccess.value = false
+      javaVirtualEnvCreationSuccessMessage.value = ''
+    }
+  }
+}
+
+// 取消Python虚拟环境创建
+const handleCancelPythonVirtualEnv = () => {
+  pythonVirtualEnvDrawerVisible.value = false
+  pythonActiveStep.value = 0
+
+  // 重置表单验证状态
+  if (pythonStep1FormRef.value) {
+    pythonStep1FormRef.value.resetFields()
+  }
+  if (pythonStep2FormRef.value) {
+    pythonStep2FormRef.value.resetFields()
+  }
+}
+
+// 取消Java虚拟环境创建
+const handleCancelJavaVirtualEnv = () => {
+  javaVirtualEnvDrawerVisible.value = false
+  javaActiveStep.value = 0
+
+  // 重置表单验证状态
+  if (javaStep1FormRef.value) {
+    javaStep1FormRef.value.resetFields()
+  }
+  if (javaStep2FormRef.value) {
+    javaStep2FormRef.value.resetFields()
+  }
+}
+
+// 创建Python虚拟环境
+const handleCreatePythonVirtualEnv = async () => {
   try {
-    virtualEnvSubmitLoading.value = true
+    pythonVirtualEnvSubmitLoading.value = true
 
     const params = {
-      case_source_id: currentCaseSource.value.id,
+      case_source_id: currentPythonCaseSource.value.id,
       workspace_id: route.params.id,
-      python_version: virtualEnvForm.pythonVersion,
-      project_name: currentCaseSource.value.caseProjectName,
-      git_project_id: currentCaseSource.value.caseSourceValue.projectId,
-      requirements_path: virtualEnvForm.requirementsPath
+      python_version: pythonVirtualEnvForm.pythonVersion,
+      project_name: currentPythonCaseSource.value.caseProjectName,
+      git_project_id: currentPythonCaseSource.value.caseSourceValue.projectId,
+      requirements_path: pythonVirtualEnvForm.requirementsPath
     }
 
     const res = await createPythonVirtualEnv(params)
 
     if (res.code === 0) {
-      virtualEnvCreationSuccess.value = true
-      virtualEnvCreationError.value = false
-      virtualEnvCreationSuccessMessage.value = res.data.log || '虚拟环境创建成功'
+      pythonVirtualEnvCreationSuccess.value = true
+      pythonVirtualEnvCreationError.value = false
+      pythonVirtualEnvCreationSuccessMessage.value = res.data.log || '虚拟环境创建成功'
       // 更新步骤状态，使最后一步显示为完成状态
-      activeStep.value = 3
+      pythonActiveStep.value = 3
     } else {
-      virtualEnvCreationError.value = true
-      virtualEnvCreationSuccess.value = false
-      virtualEnvCreationErrorMessage.value = res.message || '虚拟环境创建失败'
+      pythonVirtualEnvCreationError.value = true
+      pythonVirtualEnvCreationSuccess.value = false
+      pythonVirtualEnvCreationErrorMessage.value = res.message || '虚拟环境创建失败'
     }
   } catch (error) {
     ElMessage.error('虚拟环境创建失败: ' + error.message)
   } finally {
-    virtualEnvSubmitLoading.value = false
+    pythonVirtualEnvSubmitLoading.value = false
+  }
+}
+
+
+// 获取默认Maven配置
+const fetchDefaultMavenConfig = async () => {
+  try {
+    const res = await getDefaultMavenConfig()
+    if (res.code === 0) {
+      return res.data
+    } else {
+      ElMessage.error(res.message || '获取默认Maven配置失败')
+      return null
+    }
+  } catch (error) {
+    ElMessage.error('获取默认Maven配置失败: ' + error.message)
+    return null
+  }
+}
+
+// 加载默认Maven配置
+const loadDefaultMavenConfig = async () => {
+  javaFilePreviewLoading.value = true
+  javaFilePreviewVisible.value = false
+  try {
+    const defaultMavenConfig = await fetchDefaultMavenConfig()
+    if (defaultMavenConfig) {
+      javaSelectedFilePath.value = defaultMavenConfig.filePath
+      javaFileContent.value = defaultMavenConfig.content
+      javaFilePreviewVisible.value = true
+    }
+  } catch (error) {
+    ElMessage.error('加载默认Maven配置失败: ' + error.message)
+  } finally {
+    javaFilePreviewLoading.value = false
+  }
+}
+// 清除Maven配置选择，使用默认配置
+const clearMavenConfigSelection = () => {
+  javaVirtualEnvForm.mavenConfigPath = ''
+  javaFilePreviewVisible.value = false
+  javaFileContent.value = ''
+  javaSelectedFilePath.value = ''
+}
+
+// 创建Java虚拟环境
+const handleCreateJavaVirtualEnv = async () => {
+  try {
+    javaVirtualEnvSubmitLoading.value = true
+
+    const params = {
+      case_source_id: currentJavaCaseSource.value.id,
+      workspace_id: route.params.id,
+      java_version: javaVirtualEnvForm.javaVersion,
+      project_name: currentJavaCaseSource.value.caseProjectName,
+      git_project_id: currentJavaCaseSource.value.caseSourceValue.projectId,
+      maven_settings_path: javaVirtualEnvForm.mavenConfigPath
+    }
+
+    const res = await createJavaVirtualEnv(params)
+
+    if (res.code === 0) {
+      javaVirtualEnvCreationSuccess.value = true
+      javaVirtualEnvCreationError.value = false
+      javaVirtualEnvCreationSuccessMessage.value = res.data.log || '虚拟环境创建成功'
+      // 更新步骤状态，使最后一步显示为完成状态
+      javaActiveStep.value = 3
+    } else {
+      javaVirtualEnvCreationError.value = true
+      javaVirtualEnvCreationSuccess.value = false
+      javaVirtualEnvCreationErrorMessage.value = res.message || '虚拟环境创建失败'
+    }
+  } catch (error) {
+    ElMessage.error('虚拟环境创建失败: ' + error.message)
+  } finally {
+    javaVirtualEnvSubmitLoading.value = false
   }
 }
 
 // 完成按钮点击事件
-const handleFinish = () => {
-  virtualEnvDrawerVisible.value = false
-  activeStep.value = 0
+const handleFinish = (type) => {
+  if (type === 'python') {
+    pythonVirtualEnvDrawerVisible.value = false
+    pythonActiveStep.value = 0
+  } else if (type === 'java') {
+    javaVirtualEnvDrawerVisible.value = false
+    javaActiveStep.value = 0
+  }
   fetchCaseSourceList() // 刷新用例源列表
 }
 </script>
@@ -1521,34 +2068,6 @@ const handleFinish = () => {
 .delete-btn:hover {
   background-color: #ffebee;
   color: #d32f2f !important;
-}
-
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 30px 20px;
-  color: #a0aec0;
-}
-
-.empty-icon {
-  font-size: 32px;
-  margin-bottom: 10px;
-  color: #cbd5e0;
-}
-
-.empty-text {
-  font-size: 13px;
-  margin-bottom: 14px;
-  color: #909399;
-}
-
-.empty-button {
-  border-radius: 4px;
-  transition: all 0.2s ease;
-  font-size: 12px;
-  padding: 6px 10px;
 }
 
 /* 弹窗美化核心样式 */

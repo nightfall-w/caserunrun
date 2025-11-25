@@ -30,10 +30,66 @@ def get_installed_python_versions():
             capture_output=True, text=True, check=True
         )
         versions = [v.strip() for v in result.stdout.split("\n") if v.strip()]
+        # 对版本号进行排序
+        versions.sort(key=lambda v: [int(x) for x in v.split('.')])
         print(versions)
         return versions
     except subprocess.CalledProcessError as e:
         raise HTTPException(status_code=500, detail=f"获取Python版本失败：{e.stderr}")
+
+
+def get_installed_java_versions():
+    """获取已安装的Java版本"""
+
+    try:
+        # 使用 update-alternatives --list java 命令获取已安装的 Java 版本
+        result = subprocess.run(['update-alternatives', '--list', 'java'],
+                                capture_output=True,
+                                text=True,
+                                check=True)
+
+        # 解析输出，每一行都是一个 Java 安装路径
+        java_paths = result.stdout.strip().split('\n') if result.stdout.strip() else []
+
+        # 从路径中提取版本信息
+        java_versions = []
+        default_java_version = None
+
+        # 获取当前默认的 Java 版本
+        try:
+            default_result = subprocess.run(['java', '-version'],
+                                            capture_output=True,
+                                            text=True)
+            # java -version 输出到 stderr
+            version_output = default_result.stderr
+            if 'version' in version_output:
+                # 提取版本号，例如 "java version "1.8.0_292""
+                default_java_version = version_output.split('"')[1]
+        except Exception:
+            # 如果无法获取默认版本，继续执行而不中断
+            pass
+
+        for path in java_paths:
+            # 通常路径格式类似于 /usr/lib/jvm/java-11-openjdk-amd64/bin/java
+            # 提取版本号部分
+            if 'java-' in path:
+                version_part = path.split('java-')[1].split('-')[0]
+                java_versions.append({
+                    'version': version_part,
+                    'path': path
+                })
+                java_versions = sorted(java_versions, key=lambda x: int(x['version']), reverse=True)
+
+        return java_versions, default_java_version
+
+    except subprocess.CalledProcessError as e:
+        # 当 update-alternatives 没有找到 java 选项时会返回错误
+        if e.returncode == 2:
+            return [], None
+        else:
+            raise e
+    except Exception as e:
+        raise e
 
 
 def get_python_path(python_version):

@@ -278,6 +278,13 @@ export function getPythonList() {
 }
 
 /**
+ * 获取jdk列表
+ */
+export function getJavaList() {
+  return request.get('/api/v1/virtual-env/java-versions');
+}
+
+/**
  * 创建虚拟环境
  */
 export function createPythonVirtualEnv(params, timeout = 120000) {
@@ -296,4 +303,11 @@ export function createJavaVirtualEnv(params, timeout = 60000) {
  */
 export function getFileContent(params) {
   return request.get('/api/v1/case_source/queryFileContent', params);
+}
+
+/**
+ * 获取默认的maven配置
+ */
+export function getDefaultMavenConfig() {
+  return request.get('/api/v1/virtual-env/get_default_maven_setting');
 }

@@ -5,6 +5,7 @@
 @Time：2025/11/20 17:15
 """
 import os
+import subprocess
 import tempfile
 from pathlib import Path
 
@@ -18,7 +19,7 @@ from app.core.config import CASE_HOUSE_ROOT
 from app.core.database import get_sync_db
 from app.core.response import api_response, HttpErrcode
 from app.setting.controller import SettingCRUD
-from app.virtual_env.controller import get_installed_python_versions, create_python_venv
+from app.virtual_env.controller import get_installed_python_versions, create_python_venv, get_installed_java_versions
 from app.virtual_env.request_models import CreatePythonVirtualEnvModel, CreateJavaVirtualEnvModel
 
 router = APIRouter(prefix="/virtual-env", tags=["虚拟环境管理"])
@@ -41,60 +42,14 @@ async def list_java_versions():
     """
     获取已安装的 java 版本列表
     """
-    import subprocess
-
     try:
-        # 使用 update-alternatives --list java 命令获取已安装的 Java 版本
-        result = subprocess.run(['update-alternatives', '--list', 'java'],
-                                capture_output=True,
-                                text=True,
-                                check=True)
-
-        # 解析输出，每一行都是一个 Java 安装路径
-        java_paths = result.stdout.strip().split('\n') if result.stdout.strip() else []
-
-        # 从路径中提取版本信息
-        java_versions = []
-        default_java_version = None
-
-        # 获取当前默认的 Java 版本
-        try:
-            default_result = subprocess.run(['java', '-version'],
-                                            capture_output=True,
-                                            text=True)
-            # java -version 输出到 stderr
-            version_output = default_result.stderr
-            if 'version' in version_output:
-                # 提取版本号，例如 "java version "1.8.0_292""
-                default_java_version = version_output.split('"')[1]
-        except Exception:
-            # 如果无法获取默认版本，继续执行而不中断
-            pass
-
-        for path in java_paths:
-            # 通常路径格式类似于 /usr/lib/jvm/java-11-openjdk-amd64/bin/java
-            # 提取版本号部分
-            if 'java-' in path:
-                version_part = path.split('java-')[1].split('-')[0]
-                java_versions.append({
-                    'version': version_part,
-                    'path': path
-                })
-
+        java_versions, default_java_version = get_installed_java_versions()
         return api_response(data={
             'versions': java_versions,
             'default_version': default_java_version
         }, message="获取已安装的 Java 版本列表成功")
-
-    except subprocess.CalledProcessError as e:
-        # 当 update-alternatives 没有找到 java 选项时会返回错误
-        if e.returncode == 2:
-            return api_response(data={'versions': [], 'default_version': None},
-                                message="系统中未安装 Java 或未配置 alternatives")
-        else:
-            return api_response(code=HttpErrcode.EXCEPTION, message=f"获取 Java 版本列表失败: {str(e)}")
     except Exception as e:
-        return api_response(code=HttpErrcode.EXCEPTION, message=f"获取 Java 版本列表时发生错误: {str(e)}")
+        return api_response(code=HttpErrcode.EXCEPTION, message=f"获取 Java 版本列表失败: {str(e)}")
 
 
 @router.post("/create_python_virtual_environment")
