@@ -180,6 +180,7 @@ async def create_java_virtual_environment(
                                 text=True)
         if result.returncode != 0:
             return api_response(code=HttpErrcode.EXCEPTION, message=f"mvn install -DskipTests执行失败: {result.stderr}")
+        log = f"{result.stdout.decode('utf-8')}\n{result.stderr.decode('utf-8')}",
     except Exception as e:
         return api_response(code=HttpErrcode.EXCEPTION, message=f"执行mvn install -DskipTests时发生错误: {str(e)}")
 
@@ -187,7 +188,9 @@ async def create_java_virtual_environment(
         "envrc_path": envrc_path,
         "envrc_content": envrc_content,
         "java_home": java_home,
-        "java_version": java_version
+        "java_version": java_version,
+        "maven_setting_path": maven_setting_path,
+        "log": log
     }, message="Java虚拟环境创建成功")
 
 
