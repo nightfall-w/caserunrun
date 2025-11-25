@@ -21,7 +21,9 @@ from app.core.response import api_response, HttpErrcode
 from app.setting.controller import SettingCRUD
 from app.virtual_env.controller import get_installed_python_versions, create_python_venv, get_installed_java_versions, \
     get_default_maven_setting_path_and_content
+from app.virtual_env.models import JavaEnvModel
 from app.virtual_env.request_models import CreatePythonVirtualEnvModel, CreateJavaVirtualEnvModel
+from utils.commonlib import now
 
 router = APIRouter(prefix="/virtual-env", tags=["虚拟环境管理"])
 
@@ -186,11 +188,26 @@ async def create_java_virtual_environment(
     except Exception as e:
         return api_response(code=HttpErrcode.EXCEPTION, message=f"执行mvn install -DskipTests时发生错误: {str(e)}")
 
+    # 保存Java虚拟环境信息
+    java_env_data = {
+        "name": project_name,
+        "java_version": java_version,
+        "jdk_path": java_path,
+        "maven_setting_path": maven_setting_path,
+        "create_time": now(),
+        "update_time": now()
+    }
+
+    java_env_model = JavaEnvModel(**java_env_data)
+    db.add(java_env_model)
+    db.commit()
+    db.refresh(java_env_model)
+
     return api_response(data={
         "envrc_path": envrc_path,
         "envrc_content": envrc_content,
         "java_home": java_home,
-        "java_version": java_version,
+        "java_version": "JDK" + java_version,
         "maven_setting_path": maven_setting_path,
         "log": log
     }, message="Java虚拟环境创建成功")
