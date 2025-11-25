@@ -431,8 +431,7 @@
                   node-key="path"
                   :props="treeProps"
                   check-strictly
-                  :default-expand-all="false"
-                  style="width: 100%"
+                  :default-expand-all="false" style="width: 100%"
                   placeholder="请选择依赖包列表文件"
                   size="large"
                   class="file-tree-select"
@@ -462,7 +461,7 @@
                   <el-tag type="info" size="small">依赖文件</el-tag>
                 </div>
                 <div class="preview-content-wrapper">
-                  <pre class="file-content-preview">{{ pythonFileContent }}</pre>
+                  <pre class="file-content-preview" v-html="highlightedPythonFileContent"></pre>
                 </div>
                 <div class="preview-card-footer" v-if="pythonFileContent">
                   <span class="line-count">共 {{ pythonFileContent.split('\n').length }} 行</span>
@@ -684,8 +683,7 @@
                   node-key="path"
                   :props="treeProps"
                   check-strictly
-                  :default-expand-all="false"
-                  style="width: 100%"
+                  :default-expand-all="false" style="width: 100%"
                   placeholder="请选择Maven配置文件(settings.xml)，留空则使用默认配置"
                   size="large"
                   class="file-tree-select"
@@ -736,7 +734,7 @@
                   <el-tag type="info" size="small">Maven配置文件</el-tag>
                 </div>
                 <div class="preview-content-wrapper">
-                  <pre class="file-content-preview">{{ javaFileContent }}</pre>
+                  <pre class="file-content-preview" v-html="highlightedJavaFileContent"></pre>
                 </div>
                 <div class="preview-card-footer" v-if="javaFileContent">
                   <span class="line-count">共 {{ javaFileContent.split('\n').length }} 行</span>
@@ -744,6 +742,7 @@
               </el-card>
             </div>
           </div>
+
 
           <!-- 步骤3: 确认配置 -->
           <div v-show="javaActiveStep === 2 || javaActiveStep === 3" class="step-panel">
@@ -876,6 +875,12 @@
 import {computed, nextTick, onMounted, reactive, ref, watch} from 'vue'
 import {useRoute} from 'vue-router'
 import {ElMessage, ElMessageBox} from 'element-plus'
+import hljs from 'highlight.js'
+import 'highlight.js/styles/default.css'
+import xmlLanguage from 'highlight.js/lib/languages/xml'
+import pythonLanguage from 'highlight.js/lib/languages/python'
+
+
 import {
   bindCaseSource,
   createPythonVirtualEnv,
@@ -901,6 +906,25 @@ import {
   SuccessFilled,
   View
 } from '@element-plus/icons-vue'
+
+// 注册语言
+hljs.registerLanguage('xml', xmlLanguage)
+hljs.registerLanguage('python', pythonLanguage)
+
+
+// 计算高亮的Python文件内容
+const highlightedPythonFileContent = computed(() => {
+  if (!pythonFileContent.value) return ''
+  const highlighted = hljs.highlight(pythonFileContent.value, { language: 'python' }).value
+  return highlighted
+})
+
+// 计算高亮的Java文件内容 (Maven配置文件)
+const highlightedJavaFileContent = computed(() => {
+  if (!javaFileContent.value) return ''
+  const highlighted = hljs.highlight(javaFileContent.value, {language: 'xml'}).value
+  return highlighted
+})
 
 const route = useRoute()
 
@@ -2700,5 +2724,56 @@ const handleFinish = (type) => {
   word-break: break-all;
   color: #166534;
   overflow-y: auto;
+}
+
+.file-content-preview {
+  margin: 0;
+  padding: 12px;
+  background-color: #f8fafc;
+  border-radius: 8px;
+  font-family: 'Fira Code', monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-all;
+  color: #334155;
+  overflow-y: auto;
+}
+
+/* 高亮显示样式 */
+:deep(.file-content-preview code) {
+  background: none !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
+}
+
+:deep(.file-content-preview .hljs) {
+  background: none !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
+}
+
+:deep(.file-content-preview .hljs-comment) {
+  color: #606c71;
+}
+
+:deep(.file-content-preview .hljs-keyword) {
+  color: #d73a49;
+}
+
+:deep(.file-content-preview .hljs-tag) {
+  color: #22863a;
+}
+
+:deep(.file-content-preview .hljs-name) {
+  color: #22863a;
+}
+
+:deep(.file-content-preview .hljs-attr) {
+  color: #6f42c1;
+}
+
+:deep(.file-content-preview .hljs-string) {
+  color: #032f62;
 }
 </style>

@@ -31,7 +31,7 @@ def get_installed_python_versions():
         )
         versions = [v.strip() for v in result.stdout.split("\n") if v.strip()]
         # 对版本号进行排序
-        versions.sort(key=lambda v: [int(x) for x in v.split('.')])
+        versions.sort(key=lambda v: [int(x) for x in v.split('.')], reverse=True)
         print(versions)
         return versions
     except subprocess.CalledProcessError as e:
