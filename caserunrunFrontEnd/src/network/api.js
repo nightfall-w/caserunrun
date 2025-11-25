@@ -294,7 +294,7 @@ export function createPythonVirtualEnv(params, timeout = 120000) {
 /**
  * 创建java虚拟环境
  */
-export function createJavaVirtualEnv(params, timeout = 60000) {
+export function createJavaVirtualEnv(params, timeout = 180000) {
   return request.post('/api/v1/virtual-env/create_java_virtual_environment', params, {timeout});
 }
 
