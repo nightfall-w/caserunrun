@@ -468,6 +468,7 @@ import hljs from 'highlight.js/lib/core';
 import python from 'highlight.js/lib/languages/python';
 import java from 'highlight.js/lib/languages/java';
 import 'highlight.js/styles/a11y-dark.css';
+
 // 注册语言
 hljs.registerLanguage('python', python);
 hljs.registerLanguage('java', java);
@@ -1338,13 +1339,13 @@ const getFileNameFromPath = (path) => {
   display: block;
   padding: 5px 15px 15px 15px; /* 减少内边距 */
   overflow-x: auto;
-  font-family: "Fira Code",
-  "JetBrains Mono",
-  "Consolas",
-  "Menlo",
-  "Monaco",
-  "Courier New",
-  monospace;
+  /*font-family: "Fira Code",*/
+  /*"JetBrains Mono",*/
+  /*"Consolas",*/
+  /*"Menlo",*/
+  /*"Monaco",*/
+  /*"Courier New",*/
+  /*monospace;*/
   font-size: 13px;
   line-height: 1.5;
   color: #f3f4f6;

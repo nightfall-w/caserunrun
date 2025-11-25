@@ -344,7 +344,7 @@
     <el-drawer
       v-model="pythonVirtualEnvDrawerVisible"
       direction="rtl"
-      size="50%"
+      size="60%"
       class="virtual-env-drawer"
     >
       <template #header>
@@ -596,7 +596,7 @@
     <el-drawer
       v-model="javaVirtualEnvDrawerVisible"
       direction="rtl"
-      size="50%"
+      size="60%"
       class="virtual-env-drawer"
     >
       <template #header>
