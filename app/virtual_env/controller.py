@@ -15,7 +15,7 @@ from app.virtual_env.models import PythonVirtualEnvModel
 app = FastAPI(title="Python虚拟环境管理工具")
 
 # 配置项
-VENV_ROOT = os.path.expandvars("$HOME")  # 虚拟环境存放目录
+VENV_ROOT = os.path.join(os.path.expandvars("$HOME"), "venv")  # 虚拟环境存放目录
 PYENV_ROOT = 'pyenv'
 
 # 确保目录存在
