@@ -48,9 +48,9 @@ class JavaEnvModel(Base):
     """
     __tablename__ = "java_envs"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     # 环境名称
-    name = Column(String(100), unique=True, index=True, nullable=False)
+    name = Column(String(100), nullable=False)
     # Java版本
     java_version = Column(String(20), nullable=False)
     # JDK路径
