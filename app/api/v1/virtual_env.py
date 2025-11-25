@@ -178,6 +178,19 @@ async def create_java_virtual_environment(
 
     # 执行 mvn install -DskipTests 安装项目依赖
     try:
+        # 先执行mvn clean
+        clean_result = subprocess.run(["mvn", "clean", "-B"],
+                                      cwd=project_root,
+                                      capture_output=True,
+                                      check=True,
+                                      text=True)
+        if clean_result.returncode != 0:
+            return api_response(code=HttpErrcode.EXCEPTION, message=f"mvn clean执行失败: {clean_result.stderr}")
+    except Exception as e:
+        return api_response(code=HttpErrcode.EXCEPTION, message=f"执行mvn clean时发生错误: {str(e)}")
+
+    try:
+        # 再执行mvn install -DskipTests
         result = subprocess.run(["mvn", "install", "-B", "-DskipTests"],
                                 cwd=project_root,
                                 capture_output=True,
