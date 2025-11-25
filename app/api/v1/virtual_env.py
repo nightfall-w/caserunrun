@@ -19,7 +19,8 @@ from app.core.config import CASE_HOUSE_ROOT
 from app.core.database import get_sync_db
 from app.core.response import api_response, HttpErrcode
 from app.setting.controller import SettingCRUD
-from app.virtual_env.controller import get_installed_python_versions, create_python_venv, get_installed_java_versions
+from app.virtual_env.controller import get_installed_python_versions, create_python_venv, get_installed_java_versions, \
+    get_default_maven_setting_path_and_content
 from app.virtual_env.request_models import CreatePythonVirtualEnvModel, CreateJavaVirtualEnvModel
 
 router = APIRouter(prefix="/virtual-env", tags=["虚拟环境管理"])
@@ -137,6 +138,9 @@ async def create_java_virtual_environment(
 
     project_root = os.path.join(CASE_HOUSE_ROOT, str(workspace_id), str(git_project_id), branch, project_name)
 
+    if not maven_setting_path:
+        # 使用默认配置
+        settings_content, maven_setting_path = get_default_maven_setting_path_and_content()
     # 创建.envrc文件
     envrc_content = f"""#!/bin/bash
                     # 项目专属JDK路径（Java {java_version}）
@@ -181,35 +185,13 @@ async def get_default_maven_setting():
     """
     获取默认的maven设置
     """
-
-    # 定义可能的 settings.xml 文件路径
-    settings_paths = [
-        "/etc/maven/settings.xml",  # 系统级配置
-        os.path.expanduser("~/.m2/settings.xml"),  # 用户级配置
-        os.path.expanduser("/opt/apache-maven-3.8.1/conf/settings.xml"),  # 用户级配置
-    ]
-
-    settings_content = None
-    found_path = None
-
-    # 查找存在的 settings.xml 文件
-    for path in settings_paths:
-        settings_file = Path(path)
-        if settings_file.exists() and settings_file.is_file():
-            try:
-                with open(path, 'r', encoding='utf-8') as file:
-                    settings_content = file.read()
-                    found_path = path
-                    break
-            except Exception as e:
-                # 如果读取失败，继续尝试下一个路径
-                continue
+    settings_content, maven_setting_path = get_default_maven_setting_path_and_content()
 
     # 如果没找到任何配置文件，返回默认模板
     if not settings_content:
         return api_response(data=None, code=HttpErrcode.NOT_FOUND, message="未找到任何配置文件")
 
     return api_response(data={
-        "filePath": found_path,
+        "filePath": maven_setting_path,
         "content": settings_content
     }, message="获取成功")

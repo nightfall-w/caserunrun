@@ -6,6 +6,7 @@
 """
 import os
 import subprocess
+from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
 from sqlalchemy.orm import Session
@@ -170,6 +171,30 @@ def create_python_venv(workspace_id, python_version: str, project_name: str, pro
         raise HTTPException(status_code=500, detail=f"{e.stderr.decode('utf-8')}")
 
 
-def create_java_venv(workspace_id, project_name: str, project_id: int, requirements_path: str, db: Session):
-    """创建Java虚拟环境并安装依赖"""
-    pass
+def get_default_maven_setting_path_and_content():
+    """
+    获取默认的maven设置
+    """
+    # 定义可能的 settings.xml 文件路径
+    settings_paths = [
+        "/etc/maven/settings.xml",  # 系统级配置
+        os.path.expanduser("~/.m2/settings.xml"),  # 用户级配置
+        os.path.expanduser("/opt/apache-maven-3.8.1/conf/settings.xml"),  # 用户级配置
+    ]
+
+    settings_content = None
+    found_path = None
+
+    # 查找存在的 settings.xml 文件
+    for path in settings_paths:
+        settings_file = Path(path)
+        if settings_file.exists() and settings_file.is_file():
+            try:
+                with open(path, 'r', encoding='utf-8') as file:
+                    settings_content = file.read()
+                    found_path = path
+                    break
+            except Exception as e:
+                # 如果读取失败，继续尝试下一个路径
+                continue
+    return settings_content, found_path
