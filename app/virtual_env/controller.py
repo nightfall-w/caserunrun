@@ -147,10 +147,10 @@ def create_python_venv(workspace_id, python_version: str, project_name: str, pro
         pip_exec = os.path.join(venv_path, "bin", "pip")
         result = subprocess.run(
             [pip_exec, "install", "-r", requirements_path],
-            check=True, capture_output=True
+            check=True, capture_output=True, text=True
         )
-        print("STDOUT:", result.stdout.decode('utf-8'))
-        print("STDERR:", result.stderr.decode('utf-8'))
+        print("STDOUT:", result.stdout)
+        print("STDERR:", result.stderr)
 
         # 保存虚拟环境信息到数据库
         interpreter_path = os.path.join(venv_path, "bin", "python")
@@ -163,12 +163,12 @@ def create_python_venv(workspace_id, python_version: str, project_name: str, pro
         )
 
         return {
-            "log": f"{result.stdout.decode('utf-8')}\n{result.stderr.decode('utf-8')}",
+            "log": f"{result.stdout}\n{result.stderr}",
             "venv_id": db_venv.id,
             "venv_version": python_version,
         }
     except subprocess.CalledProcessError as e:
-        raise HTTPException(status_code=500, detail=f"{e.stderr.decode('utf-8')}")
+        raise HTTPException(status_code=500, detail=f"{e.stderr}")
 
 
 def get_default_maven_setting_path_and_content():
