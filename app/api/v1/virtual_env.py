@@ -175,7 +175,7 @@ async def create_java_virtual_environment(
 
     # 执行 mvn install -DskipTests 安装项目依赖
     try:
-        result = subprocess.run(["mvn", "install", "-DskipTests"],
+        result = subprocess.run(["mvn", "install", "-DskipTests" "-B"],
                                 cwd=project_root,
                                 capture_output=True,
                                 check=True,
