@@ -125,7 +125,7 @@ async def create_java_virtual_environment(
     maven_setting_path = request.maven_setting_path
     branch = "master"
     # 根据Java版本确定JAVA_HOME路径
-    java_versions = get_installed_java_versions()
+    java_versions, default_java_version = get_installed_java_versions()
     for version_item in java_versions:
         if version_item['version'] == java_version:
             java_path = version_item['path']
