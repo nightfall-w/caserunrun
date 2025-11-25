@@ -5,12 +5,17 @@
 @Time：2025/10/29 21:36
 """
 import json
+import os
 from typing import Optional, Any
 
 import redis
+from dotenv import load_dotenv
 
+load_dotenv()
 # Redis 配置（可从环境变量读取）
-REDIS_URL = "redis://127.0.0.1:6379/0"  # 格式：redis://用户名:密码@主机:端口/数据库编号
+REDIS_HOST = os.getenv("REDIS_HOST", "127.0.0.1")
+REDIS_PORT = os.getenv("REDIS_PORT", "6379")
+REDIS_URL = f"redis://{REDIS_HOST}:{REDIS_PORT}/0"  # 格式：redis://用户名:密码@主机:端口/数据库编号
 REDIS_TIMEOUT = 3600  # 默认缓存过期时间（秒）
 
 
