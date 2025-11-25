@@ -4,6 +4,8 @@
 @Author：baojun.wang
 @Time：2025/11/21 10:55
 """
+from typing import Optional
+
 from pydantic import BaseModel, Field
 
 
@@ -27,5 +29,5 @@ class CreateJavaVirtualEnvModel(BaseModel):
     workspace_id: int = Field(..., description="工作空间id")
     git_project_id: int = Field(..., description="git项目的id")
     java_version: str = Field(..., description="选择的java版本")
-    maven_setting_path: str = Field(..., description="maven_setting路径")
+    maven_setting_path: Optional[str] = Field(None, description="maven_setting路径")
     project_name: str = Field(..., description="项目名称")

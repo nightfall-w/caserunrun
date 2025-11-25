@@ -124,14 +124,16 @@ async def create_java_virtual_environment(
     maven_setting_path = request.maven_setting_path
     branch = "master"
     # 根据Java版本确定JAVA_HOME路径
-    java_home_mapping = {
-        "8": "/usr/lib/jvm/java-8-openjdk-arm64",
-        "11": "/usr/lib/jvm/java-11-openjdk-arm64",
-        "17": "/usr/lib/jvm/java-17-openjdk-arm64"
-    }
+    java_versions = get_installed_java_versions()
+    for version_item in java_versions:
+        if version_item['version'] == java_version:
+            java_path = version_item['path']
+            break
+    else:
+        return api_response(code=HttpErrcode.EXCEPTION, message="Java版本不存在")
 
     # 获取对应的JAVA_HOME路径
-    java_home = java_home_mapping.get(java_version, f"/usr/lib/jvm/java-{java_version}-openjdk-amd64")
+    java_home = java_path.replace("/bin/java", "")
 
     project_root = os.path.join(CASE_HOUSE_ROOT, str(workspace_id), str(git_project_id), branch, project_name)
 
@@ -151,7 +153,6 @@ async def create_java_virtual_environment(
         f.write(envrc_content)
 
     # 执行 direnv allow 命令使.envrc文件生效
-    import subprocess
     try:
         result = subprocess.run(["direnv", "allow", project_root],
                                 cwd=project_root,
