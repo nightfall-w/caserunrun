@@ -124,10 +124,10 @@
             </template>
           </el-table-column>
           <el-table-column prop="desc" label="描述" min-width="140"/>
-          <el-table-column prop="desc" label="虚拟环境" min-width="140">
+          <el-table-column prop="desc" label="虚拟环境版本" min-width="140">
             <template #default="scope">
-              <el-tag v-if="scope.row.venvName" class="env-tag">
-                {{ scope.row.venvName }}
+              <el-tag v-if="scope.row.venvVersion" class="env-tag">
+                {{ scope.row.venvVersion }}
               </el-tag>
               <el-tag v-else type="danger">
                 未配置

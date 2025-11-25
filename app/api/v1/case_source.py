@@ -352,7 +352,7 @@ def case_source_list(request: CaseSourceListRequest, db: Session = Depends(get_s
         "tokenType": case_source_relation.token_type,
         "caseSourcePlatform": case_source_relation.case_source_platform,
         "venvId": case_source_relation.venv_id,
-        "venvName": case_source_relation.venv_name,
+        "venvVersion": case_source_relation.venv_version,
         "createTime": case_source_relation.create_time,
         "createUser": case_source_relation.create_user,
     } for case_source_relation in case_source_relation_list]

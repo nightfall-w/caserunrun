@@ -280,12 +280,12 @@ export function getPythonList() {
 /**
  * 创建虚拟环境
  */
-export function createPythonVirtualEnv(params, timeout = 60000) {
+export function createPythonVirtualEnv(params, timeout = 120000) {
   return request.post('/api/v1/virtual-env/create_python_virtual_environment', params, {timeout});
 }
 
 /**
- * 获取虚拟环境列表
+ * 创建java虚拟环境
  */
 export function createJavaVirtualEnv(params, timeout = 60000) {
   return request.post('/api/v1/virtual-env/create_java_virtual_environment', params, {timeout});

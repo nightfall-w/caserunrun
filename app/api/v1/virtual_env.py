@@ -145,7 +145,7 @@ async def create_python_virtual_environment(
                 db_case_source = db.execute(stmt).scalars().first()
                 if db_case_source:
                     db_case_source.venv_id = result["venv_id"]
-                    db_case_source.venv_name = result["venv_name"]
+                    db_case_source.venv_version = result["venv_version"]
                     db.commit()
             return api_response(data=result, message="创建虚拟环境成功")
         else:

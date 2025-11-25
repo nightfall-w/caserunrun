@@ -108,7 +108,7 @@ def create_python_venv(workspace_id, python_version: str, project_name: str, pro
         return {
             "log": f"{result.stdout.decode('utf-8')}\n{result.stderr.decode('utf-8')}",
             "venv_id": db_venv.id,
-            "venv_name": venv_name,
+            "venv_version": python_version,
         }
     except subprocess.CalledProcessError as e:
         raise HTTPException(status_code=500, detail=f"{e.stderr.decode('utf-8')}")
