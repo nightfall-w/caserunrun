@@ -178,12 +178,13 @@ async def create_java_virtual_environment(
 
     # 执行 mvn install -DskipTests 安装项目依赖
     try:
-        # 先执行mvn clean
+        # 先取消设置MAVEN_OPTS环境变量，再执行mvn clean
         clean_result = subprocess.run(["mvn", "clean", "-B"],
                                       cwd=project_root,
                                       capture_output=True,
                                       check=True,
-                                      text=True)
+                                      text=True,
+                                      env={k: v for k, v in os.environ.items() if k != 'MAVEN_OPTS'})
         if clean_result.returncode != 0:
             return api_response(code=HttpErrcode.EXCEPTION, message=f"mvn clean执行失败: {clean_result.stderr}")
     except Exception as e:
