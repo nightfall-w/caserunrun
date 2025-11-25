@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 http://maven.apache.org/xsd/settings-1.0.0.xsd">
+    <localRepository>/opt/apache-maven-3.8.1/repository</localRepository>
+    <pluginGroups>
+    </pluginGroups>
+
+    <proxies>
+    </proxies>
+
+    <servers>
+        <server>
+            <id>huaweicloud</id>
+            <privateKey>anonymous</privateKey>
+            <passphrase>devcloud</passphrase>
+        </server>
+    </servers>
+
+    <mirrors>
+
+        <mirror>
+            <id>huaweicloud</id>
+            <mirrorOf>*</mirrorOf>
+            <name>huaweicloud</name>
+            <url>https://mirrors.huaweicloud.com/repository/maven/</url>
+        </mirror>
+    </mirrors>
+
+    <profiles>
+        <profile>
+            <id>weimbo_nexus</id>
+            <repositories>
+                <repository>
+                    <id>nexus</id>
+                    <name>nexus</name>
+                    <url>http://maven.weimob.com/content/groups/public/</url>
+                    <releases>
+                        <enabled>true</enabled>
+                    </releases>
+                    <snapshots>
+                        <enabled>true</enabled>
+                    </snapshots>
+                </repository>
+            </repositories>
+
+            <pluginRepositories>
+                <pluginRepository>
+                    <id>nexus</id>
+                    <name>nexus</name>
+                    <url>http://maven.weimob.com/content/groups/public/</url>
+                    <releases>
+                        <enabled>true</enabled>
+                    </releases>
+                    <snapshots>
+                        <enabled>true</enabled>
+                    </snapshots>
+                </pluginRepository>
+            </pluginRepositories>
+        </profile>
+
+
+        <profile>
+            <id>jdk-17</id>
+            <activation>
+                <activeByDefault>true</activeByDefault>
+                <jdk>17</jdk>
+            </activation>
+            <properties>
+                <maven.compiler.source>17</maven.compiler.source>
+                <maven.compiler.target>17</maven.compiler.target>
+                <maven.compiler.compilerVersion>17</maven.compiler.compilerVersion>
+                <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+            </properties>
+        </profile>
+    </profiles>
+
+    <activeProfiles>
+        <activeProfile>weimbo_nexus</activeProfile>
+    </activeProfiles>
+</settings>

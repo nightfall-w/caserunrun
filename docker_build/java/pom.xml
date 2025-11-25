@@ -1,0 +1,164 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>org.example</groupId>
+    <artifactId>WTP_WEB_TEST</artifactId>
+    <version>1.0-SNAPSHOT</version>
+
+    <properties>
+        <maven.compiler.source>8</maven.compiler.source>
+        <maven.compiler.target>8</maven.compiler.target>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>4.11</version>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.seleniumhq.selenium</groupId>
+            <artifactId>selenium-java</artifactId>
+            <version>4.17.0</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.testng</groupId>
+            <artifactId>testng</artifactId>
+            <version>6.11</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.dom4j</groupId>
+            <artifactId>dom4j</artifactId>
+            <version>2.1.4</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.thrift</groupId>
+            <artifactId>libthrift</artifactId>
+            <version>0.10.0</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-log4j12</artifactId>
+            <version>1.7.5</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.httpcomponents</groupId>
+            <artifactId>httpclient</artifactId>
+            <version>4.5.6</version>
+        </dependency>
+
+        <dependency>
+            <groupId>io.qameta.allure</groupId>
+            <artifactId>allure-testng</artifactId>
+            <version>2.13.0</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-lang3</artifactId>
+            <version>3.3.2</version>
+        </dependency>
+
+        <dependency>
+            <groupId>mysql</groupId>
+            <artifactId>mysql-connector-java</artifactId>
+            <version>5.1.45</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.httpcomponents</groupId>
+            <artifactId>httpclient</artifactId>
+            <version>4.5.3</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.alibaba</groupId>
+            <artifactId>fastjson</artifactId>
+            <version>1.2.74</version>
+            <exclusions>
+                <exclusion>
+                    <artifactId>logback-classic</artifactId>
+                    <groupId>ch.qos.logback</groupId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
+        <dependency>
+            <groupId>org.jetbrains</groupId>
+            <artifactId>annotations</artifactId>
+            <version>13.0</version>
+            <scope>compile</scope>
+        </dependency>
+
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.1</version>
+                <configuration>
+                    <!-- 设置jre版本为 1.8 -->
+                    <source>1.8</source>
+                    <target>1.8</target>
+                    <!-- 设置编码为 UTF-8 -->
+                    <encoding>UTF-8</encoding>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>default-compile</id>
+                        <phase>compile</phase>
+                        <goals>
+                            <goal>compile</goal>
+                        </goals>
+                        <configuration>
+                            <!-- everything in target/generated-sources/** should be excluded from this check -->
+                            <compilerArgs>
+                                <arg>-Xlint:all,-rawtypes</arg>
+                            </compilerArgs>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.0.0</version>
+                <configuration>
+                    <argLine>-Dfile.encoding=UTF-8</argLine>
+                    <includes>
+                        <include>**/*Test*.java</include>
+                    </includes>
+                    <excludes>
+                        <exclude>**/Abstract*.java</exclude>
+                    </excludes>
+                    <reportsDirectory>${reportsDirectory}</reportsDirectory>
+                    <testFailureIgnore>true</testFailureIgnore>
+                    <properties>
+                        <property>
+                            <name>usedefaultlisteners</name>
+                            <value>false</value>
+                        </property>
+                        <property>
+                            <name>listener</name>
+                            <value>org.testng.reporters.XMLReporter</value>
+                        </property>
+                    </properties>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+
+</project>
