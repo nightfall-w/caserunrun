@@ -120,6 +120,7 @@ async def create_java_virtual_environment(
     """
     创建java虚拟环境并安装依赖
     """
+    case_source_id = request.case_source_id
     workspace_id = request.workspace_id
     java_version = request.java_version
     project_name = request.project_name
@@ -202,6 +203,15 @@ async def create_java_virtual_environment(
     db.add(java_env_model)
     db.commit()
     db.refresh(java_env_model)
+
+    stmt = select(CaseSourceRelationModel).where(
+        CaseSourceRelationModel.id == case_source_id
+    )
+    db_case_source = db.execute(stmt).scalars().first()
+    if db_case_source:
+        db_case_source.venv_id = java_env_model.id
+        db_case_source.venv_version = java_env_model.java_version
+        db.commit()
 
     return api_response(data={
         "envrc_path": envrc_path,
