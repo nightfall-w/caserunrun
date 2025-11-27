@@ -311,3 +311,11 @@ export function getFileContent(params) {
 export function getDefaultMavenConfig() {
   return request.get('/api/v1/virtual-env/get_default_maven_setting');
 }
+
+
+/**
+ *  获取项目分支
+ */
+export function getProjectBranches(params) {
+  return request.get('/api/v1/case_source/getProjectBranches', params);
+}

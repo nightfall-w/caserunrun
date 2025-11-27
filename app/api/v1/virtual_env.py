@@ -66,6 +66,7 @@ async def create_python_virtual_environment(
     case_source_id = request.case_source_id
     workspace_id = request.workspace_id
     python_version = request.python_version
+    branch_name = request.branch_name
     project_name = request.project_name
     git_project_id = request.git_project_id
     requirements_path = request.requirements_path
@@ -85,7 +86,7 @@ async def create_python_virtual_environment(
                                                                 workspace_id=workspace_id)
         gitlab_client = GitlabAPI(gitlab_url=gitlab_url, token=token)
         content = gitlab_client.get_content(project_id=git_project_id,
-                                            file_path=requirements_path)
+                                            file_path=requirements_path, ref=branch_name)
         # 创建临时文件存储requirements内容
         if content:
             with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as f:
@@ -122,6 +123,7 @@ async def create_java_virtual_environment(
     """
     case_source_id = request.case_source_id
     workspace_id = request.workspace_id
+    branch_name = request.branch_name
     java_version = request.java_version
     project_name = request.project_name
     git_project_id = request.git_project_id

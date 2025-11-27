@@ -163,9 +163,12 @@ class GitCaseParser:
             parts = string.split(";")
             # 创建一个字典，将每个部分按冒号分割，并将冒号前的部分作为键，冒号后的部分作为值存储在字典中
             dict_data = {}
-            for part in parts:
-                k, v = part.split(":")
-                dict_data[k] = v
+            try:
+                for part in parts:
+                    k, v = part.split(":")
+                    dict_data[k] = v
+            except Exception as e:
+                return dict_data
             return dict_data
 
         if code_type == 'pytest':
@@ -268,7 +271,7 @@ class GitCaseParser:
                 if self.is_python_test_script(filename=basename):  # 匹配python测试用例脚本
                     file_absolute_path = os.path.join(root, basename)  # 脚本绝对路径
                     relative_path = file_absolute_path[
-                                    file_absolute_path.index(project_name) + len(project_name) + 1:]  # 脚本相对项目路径
+                        file_absolute_path.index(project_name) + len(project_name) + 1:]  # 脚本相对项目路径
                     if include_project_name:
                         project_relative_path = self.get_path_parts(file_absolute_path,
                                                                     project_name)  # 包含项目名称的脚本相对路径
@@ -294,8 +297,8 @@ class GitCaseParser:
                 if self.is_testng_test_script(filename=basename):  # 匹配testng测试用例脚本
                     file_absolute_path = os.path.join(root, basename)  # 脚本绝对路径
                     relative_path = file_absolute_path[
-                                    file_absolute_path.index(os.path.join(project_name, 'src/test/java')) + len(
-                                        project_name) + 1:]  # 脚本相对case_dir的路径
+                        file_absolute_path.index(os.path.join(project_name, 'src/test/java')) + len(
+                            project_name) + 1:]  # 脚本相对case_dir的路径
 
                     project_relative_path = self.get_path_parts(file_absolute_path,
                                                                 os.path.join(project_name,
@@ -462,9 +465,10 @@ def check_case_source_value(gitlab_url: str, token: str, case_type: str, case_so
     if case_type in [CaseType.Pytest.value, CaseType.TestNG.value]:
         # 用例类型为testng或pytest 都通过gitlab托管case
         try:
-            git_project = GitlabAPI(gitlab_url, token).get_project_by_id(case_source_value['projectId'])
+            git_client = GitlabAPI(gitlab_url, token)
+            git_project = git_client.get_project_by_id(case_source_value['projectId'])
             case_project_name = git_project.name
-            branch_names = git_project.get_project_branches()
+            branch_names = git_client.get_project_branches(project_id=git_project.id)
             if case_source_value['branchName'] not in branch_names:
                 # 无效的分支名称 抛出错误
                 raise Exception(f"不存在的分支名称: {case_source_value['branchName']}")

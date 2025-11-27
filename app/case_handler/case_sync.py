@@ -336,12 +336,12 @@ class GitCaseSync:
             # 根据用例类型同步case
             if case_source_relation.case_type == CaseType.Pytest.value:
                 self.case_source_relation, self.case_model, self.case_parser = case_source_relation, \
-                                                                               PytestCaseModel, PytestCaseParser
+                    PytestCaseModel, PytestCaseParser
                 self.sync_case()
 
             elif case_source_relation.case_type == CaseType.TestNG.value:
                 self.case_source_relation, self.case_model, self.case_parser = case_source_relation, \
-                                                                               TestNGCaseModel, TestNGCaseParser
+                    TestNGCaseModel, TestNGCaseParser
                 self.sync_case()  # TestNG的case与pytest的case同步逻辑一致 可以直接复用
             else:
                 raise Exception(f'不支持的case类型: {case_source_relation.case_type}')
@@ -548,6 +548,7 @@ class InitGitCase:
             case_info_dict['case_type'] = self.case_source_relation.case_type
             case_info_dict['specific_type'] = self.case_source_relation.specific_type
             case_info_dict['case_source_value'] = self.case_source_relation.case_source_value
+            case_info_dict['branch_name'] = self.branch_name
 
             # 生成 case_uuid（保持原有逻辑）
             case_info_dict['case_uuid'] = self.case_parser.generate_case_uuid(
@@ -566,7 +567,6 @@ class InitGitCase:
             case_info_dict['case_detail'] = case_content
             added_case_list.append(case_info_dict)
         self.db_session.commit()
-
         return added_case_list, removed_case_list, modified_case_list
 
 

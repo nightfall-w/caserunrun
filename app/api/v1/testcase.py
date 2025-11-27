@@ -154,6 +154,7 @@ def get_testcase_content_detail(
     workspace_id = case_info["workspace_id"]
     git_project_id = case_info["git_project_id"]
     case_path = case_info["case_path"]
+    branch_name = case_info["branch_name"]
     # 查询匹配的记录
     stmt = select(CaseSourceRelationModel).where(
         and_(
@@ -170,7 +171,7 @@ def get_testcase_content_detail(
                                                                 workspace_id=workspace_id)
         gitlab_client = GitlabAPI(gitlab_url=gitlab_url, token=token)
         case_content = gitlab_client.get_content(project_id=git_project_id,
-                                                 file_path=case_path)
+                                                 file_path=case_path, ref=branch_name)
         return api_response(
             data={
                 "case_content": case_content,

@@ -384,7 +384,7 @@ def sync_git_case(data: dict):
 
 @router.get("/queryFileContent")
 def get_file_content(
-        workspace_id: int, git_project_id: int, file_path: str,
+        workspace_id: int, git_project_id: int, file_path: str, branch_name: str,
         db: Session = Depends(get_sync_db),
         current_user: CurrentUser = Depends(get_current_user)
 ):
@@ -393,6 +393,7 @@ def get_file_content(
     :param workspace_id: get请求中的workspace_id参数
     :param git_project_id: get请求中的git_project_id参数
     :param file_path: get请求中的file_path参数
+    :param branch_name: 分支名称
     :param db: 数据库session
     :param current_user: 验证当前用户的身份信息
     :return:
@@ -413,10 +414,24 @@ def get_file_content(
                                                                 workspace_id=workspace_id)
         gitlab_client = GitlabAPI(gitlab_url=gitlab_url, token=token)
         content = gitlab_client.get_content(project_id=git_project_id,
-                                            file_path=file_path)
+                                            file_path=file_path, ref=branch_name)
         return api_response(
             data={
                 "content": content
             }
         )
     return api_response(code=HttpErrcode.NOT_FOUND, message="未找到文件")
+
+
+@router.get("/getProjectBranches")
+def get_project_branches(workspace_id: int, git_project_id: int, token_type: str,
+                         db: Session = Depends(get_sync_db),
+                         current_user: CurrentUser = Depends(get_current_user)
+                         ):
+    """
+    获取项目分支列表
+    """
+    setting_crud = SettingCRUD(db)
+    gitlab_url, token = setting_crud.get_gitlab_credentials(token_type=token_type, workspace_id=workspace_id)
+    gitlab_client = GitlabAPI(gitlab_url=gitlab_url, token=token)
+    return api_response(data=gitlab_client.get_project_branches(project_id=git_project_id))

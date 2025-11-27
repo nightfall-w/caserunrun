@@ -15,6 +15,7 @@ class CreatePythonVirtualEnvModel(BaseModel):
     """
     case_source_id: int = Field(..., description="用例源ID")
     workspace_id: int = Field(..., description="工作空间id")
+    branch_name: str = Field(..., description="分支名称")
     git_project_id: int = Field(..., description="git项目的id")
     python_version: str = Field(..., description="选择的python版本")
     project_name: str = Field(..., description="项目名称")
@@ -27,6 +28,7 @@ class CreateJavaVirtualEnvModel(BaseModel):
     """
     case_source_id: int = Field(..., description="用例源ID")
     workspace_id: int = Field(..., description="工作空间id")
+    branch_name: str = Field(..., description="分支名称")
     git_project_id: int = Field(..., description="git项目的id")
     java_version: str = Field(..., description="选择的java版本")
     maven_setting_path: Optional[str] = Field(None, description="maven_setting路径")

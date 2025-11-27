@@ -109,6 +109,7 @@
           <el-table-column prop="caseSourceValue.projectId" label="项目ID" width="80"
                            align="center"/>
           <el-table-column prop="caseProjectName" label="项目名称" min-width="120"/>
+          <el-table-column prop="caseSourceValue.branchName" label="分支" min-width="100"/>
           <el-table-column prop="caseSourceValue.caseDir" label="用例目录" min-width="100">
             <template #default="scope">
               {{
@@ -270,6 +271,23 @@
           <div class="token-hint" v-if="!systemTokenValid && !workspaceTokenValid">
             无有效的Git凭证，请先配置有效的Git凭证
           </div>
+        </el-form-item>
+
+        <el-form-item label="分支" prop="caseSourceValue.branchName">
+          <el-select
+            v-model="sourceForm.caseSourceValue.branchName"
+            placeholder="请选择分支" style="width: 100%"
+            class="custom-select"
+            :loading="branchLoading"
+            @focus="fetchBranches"
+          >
+            <el-option
+              v-for="branch in branchOptions"
+              :key="branch.value"
+              :label="branch.label"
+              :value="branch.value"
+            />
+          </el-select>
         </el-form-item>
 
         <el-form-item label="用例目录" prop="caseSourceValue.caseDir">
@@ -893,7 +911,8 @@ import {
   getPythonList,
   getJavaList,
   getDefaultMavenConfig,
-  updateCaseSource
+  updateCaseSource,
+  getProjectBranches
 } from '@/network/api.js'
 import {
   Check,
@@ -915,7 +934,7 @@ hljs.registerLanguage('python', pythonLanguage)
 // 计算高亮的Python文件内容
 const highlightedPythonFileContent = computed(() => {
   if (!pythonFileContent.value) return ''
-  const highlighted = hljs.highlight(pythonFileContent.value, { language: 'python' }).value
+  const highlighted = hljs.highlight(pythonFileContent.value, {language: 'python'}).value
   return highlighted
 })
 
@@ -933,6 +952,8 @@ const caseSourceList = ref([])
 const loading = ref(false)
 const submitLoading = ref(false)
 const dialogVisible = ref(false)
+const branchOptions = ref([])  // 存储分支选项
+const branchLoading = ref(false)  // 分支加载状态
 
 // 搜索关键词
 const searchKeyword = ref('')
@@ -953,6 +974,7 @@ const sourceForm = reactive({
   tokenType: undefined,
   caseSourceValue: {
     projectId: undefined,
+    branchName: undefined,
     caseDir: ''
   },
   desc: ''
@@ -1173,6 +1195,39 @@ const fetchCaseSourceList = async () => {
   }
 }
 
+// 获取项目分支列表
+const fetchBranches = async () => {
+  // 检查必要字段是否存在
+  if (!sourceForm.caseSourceValue.projectId || !sourceForm.tokenType) {
+    ElMessage.warning('请先填写项目ID并选择Git凭证')
+    return
+  }
+
+  branchLoading.value = true
+  try {
+    const params = {
+      git_project_id: sourceForm.caseSourceValue.projectId,
+      workspace_id: route.params.id,
+      token_type: sourceForm.tokenType
+    }
+
+    const res = await getProjectBranches(params)
+    if (res.code === 0) {
+      branchOptions.value = res.data.map(branch => ({
+        label: branch,
+        value: branch
+      }))
+    } else {
+      ElMessage.error(res.message || '获取分支列表失败')
+    }
+  } catch (error) {
+    ElMessage.error('获取分支列表失败: ' + error.message)
+  } finally {
+    branchLoading.value = false
+  }
+}
+
+
 // 搜索处理
 const handleSearch = () => {
   // 搜索逻辑在computed中实现
@@ -1322,7 +1377,8 @@ const openCreateDialog = () => {
     tokenType: systemTokenValid.value ? 'system' : (workspaceTokenValid.value ? 'workspace' : undefined),
     caseSourceValue: {
       projectId: undefined,
-      caseDir: ''
+      caseDir: '',
+      branchName: undefined
     },
     desc: ''
   })
@@ -1338,7 +1394,8 @@ const openEditDialog = (row) => {
     tokenType: row.tokenType,
     caseSourceValue: {
       projectId: row.caseSourceValue?.projectId,
-      caseDir: row.caseSourceValue?.caseDir || ''
+      caseDir: row.caseSourceValue?.caseDir || '',
+      branchName: row.caseSourceValue?.branchName
     },
     desc: row.desc
   })
@@ -1391,6 +1448,10 @@ const handleSubmit = async () => {
 
       if (sourceForm.caseSourceValue.projectId !== originalSourceData.value.caseSourceValue.projectId) {
         changedFields.push('项目ID')
+      }
+
+      if (sourceForm.caseSourceValue.branchName !== originalSourceData.value.caseSourceValue.branchName) {
+        changedFields.push('分支')
       }
 
       if (sourceForm.tokenType !== originalSourceData.value.tokenType) {
@@ -1620,6 +1681,7 @@ const previewFileContent = async (filePath) => {
     const params = {
       workspace_id: route.params.id,
       git_project_id: currentPythonCaseSource.value.caseSourceValue.projectId,
+      branch_name: currentPythonCaseSource.value.caseSourceValue.branchName,
       file_path: filePath
     }
 
@@ -1665,6 +1727,7 @@ const previewJavaFileContent = async (filePath) => {
     const params = {
       workspace_id: route.params.id,
       git_project_id: currentJavaCaseSource.value.caseSourceValue.projectId,
+      branch_name: currentJavaCaseSource.value.caseSourceValue.branchName,
       file_path: filePath
     }
 
@@ -1771,6 +1834,7 @@ const handleCreatePythonVirtualEnv = async () => {
     const params = {
       case_source_id: currentPythonCaseSource.value.id,
       workspace_id: route.params.id,
+      branch_name: currentPythonCaseSource.value.caseSourceValue.branchName,
       python_version: pythonVirtualEnvForm.pythonVersion,
       project_name: currentPythonCaseSource.value.caseProjectName,
       git_project_id: currentPythonCaseSource.value.caseSourceValue.projectId,
@@ -1847,6 +1911,7 @@ const handleCreateJavaVirtualEnv = async () => {
     const params = {
       case_source_id: currentJavaCaseSource.value.id,
       workspace_id: route.params.id,
+      branch_name: currentJavaCaseSource.value.caseSourceValue.branchName,
       java_version: javaVirtualEnvForm.javaVersion,
       project_name: currentJavaCaseSource.value.caseProjectName,
       git_project_id: currentJavaCaseSource.value.caseSourceValue.projectId,

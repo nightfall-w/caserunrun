@@ -61,4 +61,4 @@ async def add_new_token_header(request: Request, call_next):
 
 # 启动服务
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=8000, reload=False)
