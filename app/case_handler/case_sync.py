@@ -67,7 +67,8 @@ class GitCaseSync:
                 CaseSourceRelationModel.case_type == CaseType.Pytest.value,
                 CaseSourceRelationModel.case_type == CaseType.TestNG.value
             ),
-            CaseSourceRelationModel.case_source_value['projectId'] == self.git_project_id
+            CaseSourceRelationModel.case_source_value['projectId'] == self.git_project_id,
+            CaseSourceRelationModel.case_source_value['branch_name'] == self.branch_name
         ).all()
         if case_source_relations:
             # 有gitProject的绑定关系 说明此gitProject是有效的

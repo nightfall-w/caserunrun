@@ -82,7 +82,8 @@ def bind_case_source(request: BindCaseSourceRequest, db: Session = Depends(get_s
             CaseSourceRelationModel.workspace_id == workspace_id,
             CaseSourceRelationModel.case_type == case_type,
             CaseSourceRelationModel.specific_type == specific_type,
-            CaseSourceRelationModel.case_source_value['projectId'] == case_source_value['projectId']
+            CaseSourceRelationModel.case_source_value['projectId'] == case_source_value['projectId'],
+            CaseSourceRelationModel.case_source_value['branchName'] == case_source_value['branchName']
         )
     )
 
@@ -368,10 +369,10 @@ def sync_git_case(data: dict):
     logger.info(f'接收到的gitlab webhook数据：{data}')
     project_id = data['project_id']  # 项目id
     project_name = data['project']['name']  # 项目名称
-    if data['object_kind'] == 'push' and data['ref'] in ['refs/heads/master', 'refs/heads/main'] and data['commits']:
+    if data['object_kind'] == 'push' and data['commits']:
         # gitlab推送的是push事件 且推送的是主分支 且推送的是有commit的数据
         GitCaseSync(git_project_id=project_id, git_project_name=project_name, git_commits=data['commits'],
-                    git_project_commit_id=data['after']).sync()
+                    git_project_commit_id=data['after'], branch_name=data['ref'].split('/')[-1]).sync()
         return api_response(data=True, code=HttpErrcode.SUCCESS, message="success")
 
     else:

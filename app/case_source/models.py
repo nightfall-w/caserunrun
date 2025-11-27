@@ -43,6 +43,7 @@ class CaseSourceRelationModel(Base):
     case_source_value: Mapped[Dict[str, Any]] = mapped_column(JSON, nullable=False, comment="用例源值")
     case_project_name: Mapped[str] = mapped_column(String(200), nullable=False, comment="用例源项目名称")
     case_source_platform: Mapped[str] = mapped_column(String(20), nullable=False, comment="用例源平台")
+    branch_name: Mapped[str] = mapped_column(String(200), nullable=False, comment="分支名称")
     token_type = mapped_column(String(20), nullable=False, comment="token类型")
     venv_id: Mapped[int] = mapped_column(Integer, nullable=True, comment="虚拟环境ID")
     venv_version: Mapped[str] = mapped_column(String(200), nullable=True, comment="虚拟环境版本")

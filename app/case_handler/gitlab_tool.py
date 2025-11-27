@@ -39,6 +39,16 @@ class GitlabAPI(object):
         project = self.gl.projects.get(project_id)
         return project.default_branch
 
+    def get_project_branches(self, project_id):
+        """
+        获取项目的所有分支列表
+        :param project_id: 项目ID或项目路径
+        :return: 分支列表
+        """
+        project = self.gl.projects.get(project_id)
+        branches = project.branches.list(all=True)
+        return [branch.name for branch in branches]
+
     def get_current_user(self):
         """
         获取当前token对应的用户ID

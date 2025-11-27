@@ -460,9 +460,13 @@ def check_case_source_value(gitlab_url: str, token: str, case_type: str, case_so
         try:
             git_project = GitlabAPI(gitlab_url, token).get_project_by_id(case_source_value['projectId'])
             case_project_name = git_project.name
+            branch_names = git_project.get_project_branches()
+            if case_source_value['branchName'] not in branch_names:
+                # 无效的分支名称 抛出错误
+                raise Exception(f"不存在的分支名称: {case_source_value['branchName']}")
         except GitlabGetError:
             # 无效的gitProjectId 返回参数错误报错
-            raise Exception("无效的gitProjectId")
+            raise Exception(f"无效的gitProjectId: {case_source_value['projectId']}")
     else:
         # 无效的用例类型 返回参数错误报错
         raise Exception("无效的用例类型")
