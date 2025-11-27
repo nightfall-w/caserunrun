@@ -19,19 +19,21 @@ class GitCaseParser:
         raise NotImplementedError
 
     @staticmethod
-    def generate_case_uuid(workspace_id: int, specific_type: int, case_type: str, git_project_id: int, case_path: str):
+    def generate_case_uuid(workspace_id: int, specific_type: int, case_type: str, git_project_id: int, branch_name: str,
+                           case_path: str):
         """
         生成case uuid
         :param specific_type: WTP指定的测试类型
         :param case_path:用例路径
         :param git_project_id: git项目ID
+        :param branch_name: 分支名称
         :param case_type: 用例类型
         :param workspace_id: 用例库ID
         :return: base64编码后的case uuid
         """
         return base64.b64encode(
-            f"{workspace_id}\0{specific_type}\0{case_type}\0{git_project_id}\0{case_path}".encode("utf-8")).decode(
-            "utf-8")
+            f"{workspace_id}\0{specific_type}\0{case_type}\0{git_project_id}\0{branch_name}\0{case_path}".encode(
+                "utf-8")).decode("utf-8")
 
     @staticmethod
     def parse_case_uuid(case_uuid: str):
@@ -41,12 +43,14 @@ class GitCaseParser:
         :return:
         """
         decoded_string = base64.b64decode(case_uuid).decode("utf-8")
-        workspace_id, specific_type, case_type, case_source_value, case_path = tuple(decoded_string.split('\0'))
+        workspace_id, specific_type, case_type, git_project_id, branch_name, case_path = tuple(
+            decoded_string.split('\0'))
         return {
             'workspace_id': int(workspace_id),
             'specific_type': int(specific_type),
             'case_type': case_type,
-            'git_project_id': int(case_source_value),
+            'git_project_id': int(git_project_id),
+            'branch_name': branch_name,
             'case_path': case_path
         }
 

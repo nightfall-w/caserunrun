@@ -466,7 +466,6 @@ class InitGitCase:
     在初次绑定case源信息后 初始化case
     """
     case_source_relation: CaseSourceRelationModel  # 用例库关系
-    branch_name: str = 'master'  # 分支名
     case_model: object = None  # case数据库模型
     case_parser: object = None  # case解析器
     gitlab_client: GitlabAPI = field(default=None)  # gitlab客户端
@@ -477,6 +476,7 @@ class InitGitCase:
     def __post_init__(self):
         self.db_session = next(get_sync_db())
         self.git_project_id = self.case_source_relation.case_source_value['projectId']
+        self.branch_name = self.case_source_relation.case_source_value['branchName']
         self.gitlab_client = GitlabAPI(gitlab_url=self.gitlab_url, token=self.token)
 
     def sync(self):
@@ -511,12 +511,13 @@ class InitGitCase:
         case_list = self.case_parser(root_path=case_project_local_path).get_case_list(
             self.case_source_relation.case_source_value['caseDir'])
 
-        # 删除case库中之前workspaceId为self.case_source_relation.workspace_id的所有case
+        # 删除case库中之前的相同的用例
         stmt = select(self.case_model).where(
             and_(
                 self.case_model.workspace_id == self.case_source_relation.workspace_id,
                 self.case_model.case_type == self.case_source_relation.case_type,
-                self.case_model.git_project_id == self.git_project_id
+                self.case_model.git_project_id == self.git_project_id,
+                self.case_model.branch_name == self.branch_name
             )
         )
 
@@ -554,6 +555,7 @@ class InitGitCase:
                 specific_type=self.case_source_relation.specific_type,
                 case_type=self.case_source_relation.case_type,
                 git_project_id=self.case_source_relation.case_source_value['projectId'],
+                branch_name=self.branch_name,
                 case_path=case_info_dict['case_path']
             )
 

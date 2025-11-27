@@ -216,7 +216,8 @@ def update_case_source(request: UpdateCaseSourceRequest, db: Session = Depends(g
                     case_model.workspace_id == workspace_id,
                     case_model.specific_type == case_source_relation.specific_type,
                     case_model.case_type == _case_type,
-                    case_model.git_project_id == case_source_relation.case_source_value['projectId']
+                    case_model.git_project_id == case_source_relation.case_source_value['projectId'],
+                    case_model.branch_name == case_source_relation.case_source_value['branchName']
                 )
             )
             result = db.execute(stmt)
