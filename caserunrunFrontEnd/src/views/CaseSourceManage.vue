@@ -899,6 +899,7 @@ import hljs from 'highlight.js'
 import 'highlight.js/styles/default.css'
 import xmlLanguage from 'highlight.js/lib/languages/xml'
 import pythonLanguage from 'highlight.js/lib/languages/python'
+import 'highlight.js/styles/a11y-light.css';
 
 
 import {
@@ -932,20 +933,27 @@ import {
 hljs.registerLanguage('xml', xmlLanguage)
 hljs.registerLanguage('python', pythonLanguage)
 
+// 添加行号插件
+const addLineNumbers = (code) => {
+  const lines = code.split('\n');
+  return lines.map((line, index) =>
+    `<span class="line-number">${index + 1}</span>${line}`
+  ).join('\n');
+};
 
-// 计算高亮的Python文件内容
+// 修改计算高亮的Python文件内容
 const highlightedPythonFileContent = computed(() => {
-  if (!pythonFileContent.value) return ''
-  const highlighted = hljs.highlight(pythonFileContent.value, {language: 'python'}).value
-  return highlighted
-})
+  if (!pythonFileContent.value) return '';
+  const highlighted = hljs.highlight(pythonFileContent.value, {language: 'python'}).value;
+  return addLineNumbers(highlighted);
+});
 
-// 计算高亮的Java文件内容 (Maven配置文件)
+// 修改计算高亮的Java文件内容
 const highlightedJavaFileContent = computed(() => {
-  if (!javaFileContent.value) return ''
-  const highlighted = hljs.highlight(javaFileContent.value, {language: 'xml'}).value
-  return highlighted
-})
+  if (!javaFileContent.value) return '';
+  const highlighted = hljs.highlight(javaFileContent.value, {language: 'xml'}).value;
+  return addLineNumbers(highlighted);
+});
 
 const route = useRoute()
 
@@ -2565,6 +2573,28 @@ const handleFinish = (type) => {
   white-space: pre-wrap;
   word-break: break-all;
   color: #334155;
+  overflow-y: auto;
+  position: relative;
+}
+
+/* 行号样式 */
+.file-content-preview :deep(.line-number) {
+  display: inline-block;
+  width: 20px;
+  padding-right: 15px;
+  text-align: right;
+  color: #999;
+  user-select: none;
+  border-right: 1px solid #eee;
+  margin-right: 10px;
+  opacity: 0.8;
+  font-size: 11px;
+}
+
+.file-content-preview :deep(.hljs) {
+  background: none !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
 }
 
 .config-descriptions {

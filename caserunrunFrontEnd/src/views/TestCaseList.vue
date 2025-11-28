@@ -712,35 +712,54 @@ const handleCurrentChange = (val) => {
   fetchTestCaseList()
 }
 
-// 打开详情抽屉
+// 添加行号处理函数
+const addLineNumbers = (code) => {
+  const lines = code.split('\n');
+  return lines.map((line, index) =>
+    `<span class="line-number">${index + 1}</span>${line}`
+  ).join('\n');
+};
+
+
+// 打开详情抽屉的方法
 const openDetailDrawer = async (row) => {
-  selectedTestCase.value = row
-  testCaseContent.value = '加载中...'
-  detailDrawerVisible.value = true
+  selectedTestCase.value = row;
+  testCaseContent.value = '加载中...';
+  detailDrawerVisible.value = true;
 
   try {
     const res = await getTestCaseContentDetail({
       case_uuid: row.case_uuid,
       case_commit_id: row.case_commit_id
-    })
+    });
 
     if (res.code === 0) {
-      testCaseContent.value = res.data.case_content || '无内容'
+      testCaseContent.value = res.data.case_content || '无内容';
 
       nextTick(() => {
         if (codeRef.value) {
-          codeRef.value.classList.remove('hljs')
-          codeRef.value.removeAttribute('data-highlighted')
-          hljs.highlightElement(codeRef.value)
+          codeRef.value.classList.remove('hljs');
+          codeRef.value.removeAttribute('data-highlighted');
+          // 添加行号处理
+          const highlightedCode = hljs.highlightElement(codeRef.value);
+          if (highlightedCode) {
+            codeRef.value.innerHTML = addLineNumbers(codeRef.value.innerHTML);
+          } else {
+            // 如果 highlightElement 没有返回结果，直接处理 innerHTML
+            const originalContent = codeRef.value.textContent;
+            const language = selectedTestCase.value?.case_type === 'pytest' ? 'python' : 'java';
+            const highlighted = hljs.highlight(originalContent, {language}).value;
+            codeRef.value.innerHTML = addLineNumbers(highlighted);
+          }
         }
-      })
+      });
     } else {
-      testCaseContent.value = '获取内容失败: ' + (res.message || '未知错误')
+      testCaseContent.value = '获取内容失败: ' + (res.message || '未知错误');
     }
   } catch (error) {
-    testCaseContent.value = '获取内容失败: ' + error.message
+    testCaseContent.value = '获取内容失败: ' + error.message;
   }
-}
+};
 
 // 复制代码
 const copyCode = () => {
@@ -763,15 +782,24 @@ const copyCode = () => {
 
 // 在方法部分添加全屏切换和复制方法
 const toggleFullscreen = () => {
-  fullscreenVisible.value = true
+  fullscreenVisible.value = true;
   nextTick(() => {
     if (fullscreenCodeRef.value) {
-      fullscreenCodeRef.value.classList.remove('hljs')
-      fullscreenCodeRef.value.removeAttribute('data-highlighted')
-      hljs.highlightElement(fullscreenCodeRef.value)
+      // 重置内容以避免重复添加行号
+      fullscreenCodeRef.value.innerHTML = '';
+      fullscreenCodeRef.value.classList.remove('hljs');
+      fullscreenCodeRef.value.removeAttribute('data-highlighted');
+
+      // 获取原始内容并进行高亮处理
+      const originalContent = testCaseContent.value || '无代码内容';
+      const language = selectedTestCase.value?.case_type === 'pytest' ? 'python' : 'java';
+      const highlighted = hljs.highlight(originalContent, {language}).value;
+
+      // 添加行号
+      fullscreenCodeRef.value.innerHTML = addLineNumbers(highlighted);
     }
-  })
-}
+  });
+};
 
 const copyCodeFromFullscreen = () => {
   navigator.clipboard.writeText(testCaseContent.value).then(() => {
@@ -1344,7 +1372,7 @@ const getFileNameFromPath = (path) => {
   display: flex;
   flex-direction: column;
   flex: 1;
-  background-color: #181818;
+  background-color: #1e1e1e;
   border-radius: 12px;
   overflow: hidden;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
@@ -1402,11 +1430,26 @@ const getFileNameFromPath = (path) => {
   box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
 }
 
-/* 代码内容区域 */
+/* 行号样式 */
+.code-content :deep(.line-number),
+.fullscreen-code-content :deep(.line-number) {
+  display: inline-block;
+  width: 30px;
+  padding-right: 10px;
+  text-align: right;
+  color: #858585;
+  user-select: none;
+  border-right: 1px solid #444;
+  margin-right: 10px;
+  opacity: 0.8;
+  font-size: 12px;
+}
+
+/* 调整代码内容区域的内边距，为行号留出空间 */
 .code-content-wrapper {
   flex: 1;
   overflow: auto;
-  padding: 0 15px 15px 15px; /* 减少内边距 */
+  padding: 0 15px 15px 15px;
   position: relative;
 }
 
@@ -1424,7 +1467,7 @@ const getFileNameFromPath = (path) => {
   /*monospace;*/
   font-size: 13px;
   line-height: 1.5;
-  color: #f3f4f6;
+  color: #dadde5;
   opacity: 0.95;
   border-radius: 8px;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
