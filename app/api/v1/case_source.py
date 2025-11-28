@@ -158,18 +158,12 @@ def bind_case_source(request: BindCaseSourceRequest, db: Session = Depends(get_s
 def update_case_source(request: UpdateCaseSourceRequest, db: Session = Depends(get_sync_db),
                        userinfo: CurrentUser = Depends(get_current_user)):
     """
-    更新用例源
+    更新用例源 - 只允许修改特定字段
     """
     source_id = request.id
     workspace_id = request.workspaceId
-    specific_type = request.specificType
-    case_type = request.caseType
-    token_type = request.tokenType
-    case_source_platform = request.caseSourcePlatform
-    desc = request.desc
-    case_source_value = request.caseSourceValue
 
-    if not all([source_id, workspace_id, specific_type, case_type, case_source_value]):
+    if not all([source_id, workspace_id]):
         return api_response(code=HttpErrcode.PARAMS_MISSING, message="缺少必要参数")
 
     stmt = select(CaseSourceRelationModel).filter(CaseSourceRelationModel.id == source_id)
@@ -179,93 +173,125 @@ def update_case_source(request: UpdateCaseSourceRequest, db: Session = Depends(g
     if not case_source_relation:
         return api_response(code=HttpErrcode.PARAMS_ERROR, message="用例源关系不存在")
 
-    if case_source_relation.case_type == case_type and case_source_relation.specific_type == specific_type and \
-            case_source_relation.token_type == token_type and case_source_relation.case_source_platform == \
-            case_source_platform and Counter(case_source_relation.case_source_value) == Counter(
-        case_source_value) and case_source_relation.desc == desc:
+    # 检查是否有不允许修改的字段变更
+    if (hasattr(request, 'caseType') and request.caseType != case_source_relation.case_type) or \
+            (hasattr(request,
+                     'caseSourcePlatform') and request.caseSourcePlatform != case_source_relation.case_source_platform):
+        return api_response(code=HttpErrcode.PARAMS_ERROR, message="不允许修改caseType或caseSourcePlatform字段")
+
+    # 判断各字段是否发生变化
+    desc_changed = hasattr(request, 'desc') and request.desc != case_source_relation.desc
+    token_type_changed = hasattr(request, 'tokenType') and request.tokenType != case_source_relation.token_type
+    specific_type_changed = hasattr(request,
+                                    'specificType') and request.specificType != case_source_relation.specific_type
+
+    # 检查caseDir是否变更
+    case_dir_changed = False
+    new_case_dir = None
+    if hasattr(request, 'caseSourceValue') and 'caseDir' in request.caseSourceValue:
+        current_case_dir = case_source_relation.case_source_value.get('caseDir')
+        if request.caseSourceValue['caseDir'] != current_case_dir:
+            case_dir_changed = True
+            new_case_dir = request.caseSourceValue['caseDir']
+
+    # 如果没有变更，则直接返回
+    if not (desc_changed or token_type_changed or specific_type_changed or case_dir_changed):
         # 无修改
         pass
-
-    elif case_source_relation.case_type == case_type and case_source_relation.specific_type == specific_type and \
-            case_source_relation.token_type == token_type and case_source_relation.case_source_platform == \
-            case_source_platform and Counter(case_source_relation.case_source_value) == Counter(
-        case_source_value) and case_source_relation.desc != desc:
-        # 仅修改描述 仅更新用例源
-        case_source_relation.desc = desc
-        db.commit()
-        db.refresh(case_source_relation)
-
     else:
-        # 需要更新case
-        setting_crud = SettingCRUD(db)
-        gitlab_url, token = setting_crud.get_gitlab_credentials(token_type=token_type, workspace_id=workspace_id)
-
-        # 检查用例数据源值是否有效
-        try:
-            case_project_name = check_case_source_value(gitlab_url=gitlab_url, token=token,
-                                                        case_type=case_type, case_source_value=case_source_value)
-        except Exception as e:
-            return api_response(code=HttpErrcode.PARAMS_ERROR, message=f"用例源值无效: {str(e)}")
-
-        for _case_type in (CaseType.Pytest.value, CaseType.TestNG.value):
-            # 删除历史数据
-            case_model = get_case_model_by_case_type(case_type=_case_type)
-            # 修改后
-            stmt = select(case_model).filter(
-                and_(
-                    case_model.workspace_id == workspace_id,
-                    case_model.specific_type == case_source_relation.specific_type,
-                    case_model.case_type == _case_type,
-                    case_model.git_project_id == case_source_relation.case_source_value['projectId'],
-                    case_model.branch_name == case_source_relation.case_source_value['branchName']
-                )
-            )
-            result = db.execute(stmt)
-            db_case_list = result.scalars().all()
-
-            # 删除历史数据
-            for db_case in db_case_list:
-                db.delete(db_case)
-
-        # 更新用例源值
+        # 需要执行更新操作
         original_case_source_relation = copy.deepcopy(case_source_relation)
-        case_source_relation.case_project_name = case_project_name
-        case_source_relation.workspace_id = workspace_id
-        case_source_relation.case_type = case_type
-        case_source_relation.token_type = token_type
-        case_source_relation.case_source_platform = case_source_platform
-        case_source_relation.specific_type = specific_type
-        case_source_relation.case_source_value = case_source_value
-        case_source_relation.desc = desc
-        case_source_relation.create_user = userinfo.username
-        db.commit()
-        db.refresh(case_source_relation)
-
-        setting_crud = SettingCRUD(db)
-        server_domain = setting_crud.get_system_config_by_key("SERVER_DOMAIN").value
 
         try:
-            init_case_project(gitlab_url=gitlab_url, token=token, case_source_relation=case_source_relation)
-            if case_source_relation.case_type in [CaseType.Pytest.value,
-                                                  CaseType.TestNG.value]:
-                GitlabAPI(gitlab_url=gitlab_url,
-                          token=token).create_webhook(
-                    project_id=case_source_relation.case_source_value['projectId'],
-                    url=server_domain + '/api/case/GitCaseSync'
+            # 如果token_type变更，需要验证新的token_type是否有效
+            if token_type_changed:
+                setting_crud = SettingCRUD(db)
+                new_gitlab_url, new_token = setting_crud.get_gitlab_credentials(
+                    token_type=request.tokenType,
+                    workspace_id=workspace_id
                 )
-        except Exception as e:
-            logger.error(f"更新用例源后 初始化用例项目失败: {str(e)}")
-            # 失败后回滚
-            case_source_relation.case_project_name = original_case_source_relation.case_project_name
-            case_source_relation.workspace_id = original_case_source_relation.workspace_id
-            case_source_relation.case_type = original_case_source_relation.case_type
-            case_source_relation.specific_type = original_case_source_relation.specific_type
-            case_source_relation.case_source_value = original_case_source_relation.case_source_value
-            case_source_relation.desc = original_case_source_relation.desc
-            case_source_relation.create_user = original_case_source_relation.create_user
+
+                # 验证新token是否有权限访问该项目
+                try:
+                    gitlab_api = GitlabAPI(gitlab_url=new_gitlab_url, token=new_token)
+                    gitlab_api.get_project_by_id(id=case_source_relation.case_source_value['projectId'])
+                except Exception as e:
+                    return api_response(
+                        code=HttpErrcode.PARAMS_ERROR,
+                        message=f"新token_type无权访问项目: {str(e)}"
+                    )
+
+            # 如果caseDir变更，需要重新拉取代码
+            if case_dir_changed:
+                # 更新case_source_value中的caseDir
+                new_case_source_value = case_source_relation.case_source_value.copy()
+                new_case_source_value['caseDir'] = new_case_dir
+
+                # 如果caseDir变更，更新case_source_value并重新同步项目
+                case_source_relation.case_source_value = new_case_source_value
+
+                # 获取gitlab凭证
+                setting_crud = SettingCRUD(db)
+                gitlab_url, token = setting_crud.get_gitlab_credentials(
+                    token_type=request.tokenType or case_source_relation.token_type,
+                    workspace_id=workspace_id
+                )
+
+                # 重新初始化项目
+                init_case_project(
+                    gitlab_url=gitlab_url,
+                    token=token,
+                    case_source_relation=case_source_relation
+                )
+
+                # 如果specific_type也发生了变化，在重新同步后更新它
+                if specific_type_changed:
+                    case_source_relation.specific_type = request.specificType
+
+            else:
+                # caseDir未变更的情况
+                # 如果只有specific_type变更，只需要更新数据库中的specific_type字段
+                if specific_type_changed:
+                    case_source_relation.specific_type = request.specificType
+
+                    # 更新存量case的specific_type字段
+                    case_model = get_case_model_by_case_type(case_type=case_source_relation.case_type)
+                    stmt = select(case_model).filter(
+                        and_(
+                            case_model.workspace_id == workspace_id,
+                            case_model.specific_type == original_case_source_relation.specific_type,
+                            case_model.case_type == case_source_relation.case_type,
+                            case_model.git_project_id == case_source_relation.case_source_value['projectId'],
+                            case_model.branch_name == case_source_relation.case_source_value['branchName']
+                        )
+                    )
+                    result = db.execute(stmt)
+                    db_case_list = result.scalars().all()
+
+                    for db_case in db_case_list:
+                        db_case.specific_type = request.specificType
+
+                    db.commit()
+
+            # 更新其他可修改字段
+            if token_type_changed:
+                case_source_relation.token_type = request.tokenType
+
+            if desc_changed:
+                case_source_relation.desc = request.desc
+
+            # 更新用户信息
+            case_source_relation.update_user = userinfo.username
+
+            # 提交更改
             db.commit()
             db.refresh(case_source_relation)
-            return api_response(code=HttpErrcode.EXCEPTION, message="更新用例源后 初始化用例项目失败")
+
+        except Exception as e:
+            logger.error(f"更新用例源失败: {str(e)}")
+            # 回滚更改
+            db.rollback()
+            return api_response(code=HttpErrcode.EXCEPTION, message=f"更新用例源失败: {str(e)}")
 
     data = {
         "id": case_source_relation.id,

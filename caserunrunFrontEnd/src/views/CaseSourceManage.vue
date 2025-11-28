@@ -228,9 +228,9 @@
         <el-form-item label="用例类型" prop="caseType">
           <el-select
             v-model="sourceForm.caseType"
-            placeholder="请选择用例类型"
-            style="width: 100%"
+            placeholder="请选择用例类型" style="width: 100%"
             class="custom-select"
+            :disabled="!!sourceForm.id"
           >
             <el-option
               v-for="item in caseTypeOptions"
@@ -246,6 +246,7 @@
             v-model.number="sourceForm.caseSourceValue.projectId"
             placeholder="请输入GitLab项目ID"
             class="custom-input"
+            :disabled="!!sourceForm.id"
           />
         </el-form-item>
 
@@ -280,6 +281,7 @@
             class="custom-select"
             :loading="branchLoading"
             @focus="fetchBranches"
+            :disabled="!!sourceForm.id"
           >
             <el-option
               v-for="branch in branchOptions"
@@ -1094,6 +1096,9 @@ const sourceFormRules = {
     {required: true, message: '请输入项目ID', trigger: 'blur'},
     {type: 'number', message: '项目ID必须为数字', trigger: 'blur'}
   ],
+  'caseSourceValue.branchName': [
+    {required: true, message: '请选择分支', trigger: 'change'}
+  ],
   'caseSourceValue.caseDir': [],
   desc: [
     {required: true, message: '请输入描述信息', trigger: 'blur'}
@@ -1400,23 +1405,33 @@ const openEditDialog = (row) => {
     desc: row.desc
   })
 
-  // 如果是TestNG类型，设置后缀
-  if (row.caseType === 'testng' && row.caseSourceValue?.caseDir.startsWith('src/test/java/')) {
-    testngPathSuffix.value = row.caseSourceValue.caseDir.substring('src/test/java/'.length)
-    pytestPath.value = ''
-  } else if (row.caseType === 'pytest') {
-    // 如果是Pytest类型，设置路径
-    pytestPath.value = row.caseSourceValue?.caseDir || ''
-    testngPathSuffix.value = ''
-  } else {
-    testngPathSuffix.value = ''
-    pytestPath.value = ''
-  }
+  // 使用nextTick确保数据更新完成后再处理路径和保存原始数据
+  nextTick(() => {
+    // 如果是TestNG类型，设置后缀
+    if (row.caseType === 'testng' && row.caseSourceValue?.caseDir.startsWith('src/test/java/')) {
+      testngPathSuffix.value = row.caseSourceValue.caseDir.substring('src/test/java/'.length)
+      // 确保sourceForm.caseSourceValue.caseDir也被正确设置
+      sourceForm.caseSourceValue.caseDir = row.caseSourceValue.caseDir
+      pytestPath.value = ''
+    } else if (row.caseType === 'pytest') {
+      // 如果是Pytest类型，设置路径
+      pytestPath.value = row.caseSourceValue?.caseDir || ''
+      // 确保sourceForm.caseSourceValue.caseDir也被正确设置
+      sourceForm.caseSourceValue.caseDir = row.caseSourceValue?.caseDir || ''
+      testngPathSuffix.value = ''
+    } else {
+      testngPathSuffix.value = ''
+      pytestPath.value = ''
+      sourceForm.caseSourceValue.caseDir = row.caseSourceValue?.caseDir || ''
+    }
 
-  // 保存原始数据用于后续比较
-  originalSourceData.value = JSON.parse(JSON.stringify(sourceForm))
-  dialogVisible.value = true
+    // 在路径处理完成后再保存原始数据
+    originalSourceData.value = JSON.parse(JSON.stringify(sourceForm))
+
+    dialogVisible.value = true
+  })
 }
+
 
 // 处理对话框关闭
 const handleDialogClose = (done) => {
@@ -1437,26 +1452,6 @@ const handleSubmit = async () => {
     // 检查关键字段是否有变更
     if (sourceForm.id && originalSourceData) {
       const changedFields = []
-
-      if (sourceForm.specificType !== originalSourceData.value.specificType) {
-        changedFields.push('测试类型')
-      }
-
-      if (sourceForm.caseType !== originalSourceData.value.caseType) {
-        changedFields.push('用例类型')
-      }
-
-      if (sourceForm.caseSourceValue.projectId !== originalSourceData.value.caseSourceValue.projectId) {
-        changedFields.push('项目ID')
-      }
-
-      if (sourceForm.caseSourceValue.branchName !== originalSourceData.value.caseSourceValue.branchName) {
-        changedFields.push('分支')
-      }
-
-      if (sourceForm.tokenType !== originalSourceData.value.tokenType) {
-        changedFields.push('Git凭证')
-      }
 
       if (sourceForm.caseSourceValue.caseDir !== originalSourceData.value.caseSourceValue.caseDir) {
         changedFields.push('用例目录')
