@@ -399,6 +399,18 @@
                   <el-button
                     size="small"
                     type="primary"
+                    @click="toggleFullscreen"
+                    :disabled="!testCaseContent || testCaseContent.includes('加载中')"
+                    class="fullscreen-btn"
+                  >
+                    <el-icon :size="16">
+                      <FullScreen/>
+                    </el-icon>
+                    全屏
+                  </el-button>
+                  <el-button
+                    size="small"
+                    type="primary"
                     @click="copyCode"
                     :disabled="!testCaseContent || testCaseContent.includes('加载中')"
                     class="copy-btn"
@@ -429,7 +441,36 @@
           </div>
         </div>
       </div>
-
+      <!-- 添加全屏对话框 -->
+      <el-dialog
+        v-model="fullscreenVisible"
+        :title="selectedTestCase?.case_name || '代码预览'"
+        fullscreen
+        transition="scale"
+        class="fullscreen-dialog"
+      >
+        <div class="fullscreen-code-container">
+      <pre v-if="!testCaseContent.includes('加载中')">
+        <code
+          class="fullscreen-code-content"
+          :class="selectedTestCase?.case_type === 'pytest' ? 'language-python' : 'language-java'"
+          ref="fullscreenCodeRef"
+        >{{ testCaseContent || '无代码内容' }}</code>
+      </pre>
+          <div v-else class="code-loading">
+            <el-icon class="loading-spinner is-loading">
+              <Loading/>
+            </el-icon>
+            <p>加载代码中...</p>
+          </div>
+        </div>
+        <template #footer>
+          <div class="fullscreen-dialog-footer">
+            <el-button @click="fullscreenVisible = false">关闭</el-button>
+            <el-button type="primary" @click="copyCodeFromFullscreen">复制代码</el-button>
+          </div>
+        </template>
+      </el-dialog>
       <!-- 抽屉底部按钮 -->
       <template #footer>
         <div class="drawer-actions">
@@ -456,6 +497,7 @@ import {
   Document,
   Document as Collection,
   Folder,
+  FullScreen,
   InfoFilled,
   Loading,
   Memo,
@@ -475,6 +517,10 @@ hljs.registerLanguage('java', java);
 
 // 路由参数
 const route = useRoute()
+
+// 在数据状态部分添加全屏相关状态
+const fullscreenVisible = ref(false)
+const fullscreenCodeRef = ref(null)
 
 // 数据状态
 const testCaseList = ref([])
@@ -715,6 +761,35 @@ const copyCode = () => {
   })
 }
 
+// 在方法部分添加全屏切换和复制方法
+const toggleFullscreen = () => {
+  fullscreenVisible.value = true
+  nextTick(() => {
+    if (fullscreenCodeRef.value) {
+      fullscreenCodeRef.value.classList.remove('hljs')
+      fullscreenCodeRef.value.removeAttribute('data-highlighted')
+      hljs.highlightElement(fullscreenCodeRef.value)
+    }
+  })
+}
+
+const copyCodeFromFullscreen = () => {
+  navigator.clipboard.writeText(testCaseContent.value).then(() => {
+    ElNotification({
+      title: '成功',
+      message: '代码已复制到剪贴板',
+      type: 'success',
+      duration: 2000
+    })
+  }).catch(() => {
+    ElNotification({
+      title: '失败',
+      message: '复制失败，请手动复制',
+      type: 'error',
+      duration: 2000
+    })
+  })
+}
 
 // 格式化时间
 const formatTime = (timeString) => {
@@ -1307,6 +1382,7 @@ const getFileNameFromPath = (path) => {
   padding: 4px 10px;
   border-radius: 6px;
   font-family: 'Fira Code', monospace;
+  margin-right: 15px;
 }
 
 .copy-btn {
@@ -1316,7 +1392,7 @@ const getFileNameFromPath = (path) => {
   transition: all 0.2s;
   padding: 6px 12px; /* 调整内边距 */
   border-radius: 6px;
-  margin-right: 10px; /* 添加右边距 */
+  margin-right: 20px; /* 添加右边距 */
 }
 
 .copy-btn:hover {
@@ -1456,5 +1532,90 @@ const getFileNameFromPath = (path) => {
   .stat-item:nth-child(3) {
     grid-column: span 2;
   }
+}
+
+.fullscreen-btn {
+  background-color: #67c23a;
+  border-color: #67c23a;
+  color: white;
+  transition: all 0.2s;
+  padding: 6px 12px;
+  border-radius: 6px;
+  margin-right: 1px;
+}
+
+.fullscreen-btn:hover {
+  background-color: #5daf34;
+  border-color: #5daf34;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(103, 194, 58, 0.3);
+}
+
+.fullscreen-btn:disabled {
+  background-color: #f5f7fa;
+  border-color: #e4e7ed;
+  color: #c0c4cc;
+}
+
+/* 全屏对话框样式 */
+.fullscreen-dialog {
+  border-radius: 8px;
+}
+
+:deep(.fullscreen-dialog .el-dialog__header) {
+  background: linear-gradient(to right, #1e293b, #0f172a);
+  padding: 15px 20px;
+}
+
+:deep(.fullscreen-dialog .el-dialog__title) {
+  color: #e2e8f0;
+  font-weight: 600;
+}
+
+:deep(.fullscreen-dialog .el-dialog__headerbtn .el-dialog__close) {
+  color: #94a3b8;
+}
+
+:deep(.fullscreen-dialog .el-dialog__headerbtn .el-dialog__close:hover) {
+  color: #ffffff;
+}
+
+:deep(.fullscreen-dialog .el-dialog__body) {
+  padding: 0;
+  background-color: #181818;
+  height: calc(100vh - 125px);
+}
+
+.fullscreen-code-container {
+  height: 100%;
+  overflow: auto;
+  padding: 0 20px 20px 20px;
+}
+
+.fullscreen-code-content {
+  display: block;
+  padding: 0 15px 1px 15px;
+  overflow-x: auto;
+  font-family: 'Fira Code', 'JetBrains Mono', 'Consolas', 'Menlo', 'Monaco', 'Courier New', monospace;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #f3f4f6;
+  background-color: #1e1e1e;
+  border-radius: 8px;
+  white-space: pre;
+  min-width: fit-content;
+  margin: 0;
+}
+
+:deep(.fullscreen-dialog .el-dialog__footer) {
+  background-color: #ffffff;
+  padding: 12px 20px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.fullscreen-dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
 }
 </style>
