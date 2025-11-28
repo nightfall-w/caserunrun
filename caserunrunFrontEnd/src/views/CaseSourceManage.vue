@@ -1582,7 +1582,7 @@ const openPythonVirtualEnvDrawer = async (row) => {
   await fetchPythonVersions()
 
   // 获取项目文件树
-  await fetchProjectFileTree(row.caseSourceValue.projectId, 'python')
+  await fetchProjectFileTree(row.caseSourceValue.projectId, 'python', row.caseSourceValue.branchName)
 }
 
 // 打开Java虚拟环境抽屉
@@ -1612,7 +1612,7 @@ const openJavaVirtualEnvDrawer = async (row) => {
 
   // 获取Java版本列表
   await fetchJavaVersions()
-  await fetchProjectFileTree(row.caseSourceValue.projectId, 'java')
+  await fetchProjectFileTree(row.caseSourceValue.projectId, 'java', row.caseSourceValue.branchName)
 }
 
 // 获取Python版本列表
@@ -1647,11 +1647,12 @@ const fetchJavaVersions = async () => {
 }
 
 // 获取项目文件树
-const fetchProjectFileTree = async (projectId, type) => {
+const fetchProjectFileTree = async (projectId, type, branchName) => {
   try {
     const res = await getProjectFileTree({
       workspace_id: route.params.id,
-      git_project_id: projectId
+      git_project_id: projectId,
+      branch_name: branchName
     })
     if (res.code === 0) {
       if (type === 'python') {

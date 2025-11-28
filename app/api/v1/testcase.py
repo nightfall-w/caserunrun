@@ -182,19 +182,21 @@ def get_testcase_content_detail(
 
 
 @router.get("/getProjectFileTree")
-def get_project_file_tree(workspace_id: int, git_project_id: int, db: Session = Depends(get_sync_db)):
+def get_project_file_tree(workspace_id: int, git_project_id: int, branch_name: str, db: Session = Depends(get_sync_db)):
     """
     获取项目文件树
     :param db: 数据库session
-    :param workspace_id:
-    :param git_project_id:
+    :param workspace_id: 工作空间id
+    :param branch_name: 分支
+    :param git_project_id: git项目id
     :return:
     """
     # 查询匹配的记录
     stmt = select(CaseSourceRelationModel).where(
         and_(
             CaseSourceRelationModel.workspace_id == workspace_id,
-            CaseSourceRelationModel.case_source_value['projectId'] == git_project_id
+            CaseSourceRelationModel.case_source_value['projectId'] == git_project_id,
+            CaseSourceRelationModel.case_source_value['branchName'] == branch_name
         )
     )
     result = db.execute(stmt)
@@ -205,6 +207,6 @@ def get_project_file_tree(workspace_id: int, git_project_id: int, db: Session = 
         gitlab_url, token = setting_crud.get_gitlab_credentials(token_type=case_source.token_type,
                                                                 workspace_id=workspace_id)
         gitlab_client = GitlabAPI(gitlab_url=gitlab_url, token=token)
-        result = gitlab_client.get_project_tree_as_element_ui_format(project_id=git_project_id)
+        result = gitlab_client.get_project_tree_as_element_ui_format(project_id=git_project_id, ref=branch_name)
         return api_response(data=result)
     return api_response(code=HttpErrcode.NOT_FOUND, message="未找到匹配的用例源数据")
