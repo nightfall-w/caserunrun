@@ -1771,7 +1771,7 @@ const pythonPrevStep = () => {
   if (pythonActiveStep.value > 0) {
     pythonActiveStep.value--
     // 清除错误和成功状态
-    if (pythonActiveStep.value < 2) {
+    if (pythonActiveStep.value <= 2) {
       pythonVirtualEnvCreationError.value = false
       pythonVirtualEnvCreationErrorMessage.value = ''
       pythonVirtualEnvCreationSuccess.value = false
@@ -1785,7 +1785,7 @@ const javaPrevStep = () => {
   if (javaActiveStep.value > 0) {
     javaActiveStep.value--
     // 清除错误和成功状态
-    if (javaActiveStep.value < 2) {
+    if (javaActiveStep.value <= 2) {
       javaVirtualEnvCreationError.value = false
       javaVirtualEnvCreationErrorMessage.value = ''
       javaVirtualEnvCreationSuccess.value = false
