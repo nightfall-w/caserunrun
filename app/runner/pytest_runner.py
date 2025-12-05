@@ -17,7 +17,10 @@ from app.case_handler.case_enum import CaseType
 from app.case_handler.case_parser import GitCaseParser
 from app.case_handler.gitlab_tool import GitlabAPI
 from app.case_handler.models import PytestCaseModel
-from engineproxy.settings import MEDIA_ROOT, logger, MEDIA_URL, REPORT_DOMAIN
+from app.core.config import MEDIA_ROOT
+from utils.custom_logging import logger
+
+MEDIA_ROOT, logger, MEDIA_URL, REPORT_DOMAIN
 
 
 def create_error_html_report_file(workspace_id: int, project_id: int, git_project_name: str, case_type: str,
@@ -33,7 +36,7 @@ def create_error_html_report_file(workspace_id: int, project_id: int, git_projec
     :param case_path: 用脚本路径
     :param workspace_id: 用例库ID
     :param project_id: gitlab项目ID
-    :param result_id: WTP下发的result_id
+    :param result_id: result_id
     :param error_info: 要在html中展示的错误信息
     :return: case报告的url
     """

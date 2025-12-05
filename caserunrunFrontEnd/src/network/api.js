@@ -319,3 +319,66 @@ export function getDefaultMavenConfig() {
 export function getProjectBranches(params) {
   return request.get('/api/v1/case_source/getProjectBranches', params);
 }
+
+/**
+ * 创建测试计划
+ */
+export function createTestPlan(params) {
+  return request.post('/api/v1/testplan/create', params);
+}
+
+/**
+ * 获取测试计划详情
+ */
+export function getTestPlanDetail(test_plan_id) {
+  return request.get('/api/v1/testplan/detail/' + test_plan_id);
+}
+
+/**
+ * 更新测试计划
+ */
+export function updateTestPlan(params) {
+  return request.put('/api/v1/testplan/update', params);
+}
+
+/**
+ * 删除测试计划
+ */
+export function deleteTestPlan(params) {
+  return request.delete('/api/v1/testplan/delete/' + params.test_plan_id);
+}
+
+/**
+ * 获取测试计划列表
+ */
+export function getTestPlanList(params) {
+  return request.post('/api/v1/testplan/list', params);
+}
+
+/**
+ * 添加测试用例到测试计划
+ */
+export function addTestCaseToPlan(params) {
+  return request.post('/api/v1/testplan/case/add', params);
+}
+
+/**
+ * 批量添加测试用例到测试计划
+ */
+export function batchAddTestCaseToPlan(params) {
+  return request.post('/api/v1/testplan/case/batch_add', params);
+}
+
+/**
+ * 从测试计划移除测试用例
+ */
+export function removeTestCaseFromPlan(params) {
+  return request.post('/api/v1/testplan/case/remove', params);
+}
+
+/**
+ * 从测试计划移除测试用例
+ */
+export function clearTestCaseFromPlan(params) {
+  return request.delete('/api/v1/testplan/case/clear/' + params.test_plan_id);
+}

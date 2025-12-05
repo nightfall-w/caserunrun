@@ -23,7 +23,7 @@ class GitCaseParser:
                            case_path: str):
         """
         生成case uuid
-        :param specific_type: WTP指定的测试类型
+        :param specific_type: 测试类型
         :param case_path:用例路径
         :param git_project_id: git项目ID
         :param branch_name: 分支名称

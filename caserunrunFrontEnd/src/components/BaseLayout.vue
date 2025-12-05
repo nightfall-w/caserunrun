@@ -55,7 +55,8 @@
               <span v-if="!isCollapse">用例列表</span>
             </el-menu-item>
 
-            <el-menu-item :index="'/test-case-list/' + workspaceId" v-if="workspaceId">
+            <el-menu-item :index="'/workspace/' + workspaceId +'/test-plan-list'"
+                          v-if="workspaceId">
               <el-icon class="text-lg">
                 <Film/>
               </el-icon>

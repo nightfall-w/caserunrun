@@ -16,7 +16,7 @@ from app.case_handler.gitlab_tool import GitlabAPI
 from app.case_handler.models import PytestCaseModel, TestNGCaseModel
 from app.case_source.models import CaseSourceRelationModel
 from celery_tasks import celery_app
-from app.engine_pytest.runner import PytestCaseRunner, create_error_html_report_file
+from app.runner.runner import PytestCaseRunner, create_error_html_report_file
 from utils.custom_logging import logger
 
 
@@ -252,7 +252,6 @@ def pytest_case_job_executor(workspace_id: int, plan_id: int, plan_result_id: in
     :param wtp_case_info: case信息
     :return:
     """
-    wtp_api = WTPApi()
 
     def send_job_result(case_job: dict, result: int, case_execute_detail: dict,
                         case_function_total_count: int = 0,
@@ -267,19 +266,6 @@ def pytest_case_job_executor(workspace_id: int, plan_id: int, plan_result_id: in
         :return:
         """
         logger.info(f'{case_job}case执行完成')
-        wtp_api.send_result(workspace_id=workspace_id,
-                            plan_id=plan_id,
-                            plan_result_id=plan_result_id,
-                            case_id=case_job["caseId"],
-                            snapshot_id=case_job.get("snapshotId"),
-                            snapshot_type=case_job.get("snapshotType"),
-                            result_id=case_job["resultId"],
-                            result=result,
-                            ui_log_json=json.dumps(case_execute_detail['case_result'], ensure_ascii=False),
-                            # log=case_execute_detail['case_log'],
-                            log="",
-                            case_function_total_count=case_function_total_count,
-                            case_function_success_count=case_function_success_count)
 
     # 执行case job
     db_case = PytestCaseModel.objects.filter(workspace_id=workspace_id, case_uuid=wtp_case_info['uiId']).first()
@@ -400,7 +386,6 @@ def testng_case_task_executor(workspace_id: int, plan_id: int, plan_result_id: i
     :param wtp_case_info_list: case列表
     :param fail_stop: 失败时停止
     """
-    wtp_api = WTPApi()
 
     def cancel_job(to_be_cancelled_job_list: list):
         """
@@ -410,10 +395,6 @@ def testng_case_task_executor(workspace_id: int, plan_id: int, plan_result_id: i
         """
         for case_job in to_be_cancelled_job_list:
             logger.info(f'取消任务: {case_job}')
-            wtp_api.send_result(workspace_id=workspace_id, plan_id=plan_id, plan_result_id=plan_result_id,
-                                case_id=case_job["caseId"], snapshot_id=case_job.get("snapshotId"),
-                                snapshot_type=case_job.get("snapshotType"), result_id=case_job["resultId"], result=2,
-                                ui_log_json='任务取消', log='任务取消')
 
     def send_job_result(case_job: dict, result: int, case_execute_detail: dict,
                         case_function_total_count: int = 0,

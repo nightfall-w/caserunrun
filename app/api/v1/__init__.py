@@ -12,6 +12,7 @@ from app.api.v1.user import router as user_router
 from app.api.v1.setting import router as setting_router
 from app.api.v1.testcase import router as testcase_router
 from app.api.v1.virtual_env import router as virtual_env_router
+from app.api.v1.testplan import router as testplan_router
 
 router = APIRouter(prefix="/v1")  # 版本前缀
 router.include_router(case_source_router)
@@ -20,3 +21,4 @@ router.include_router(user_router)
 router.include_router(setting_router)
 router.include_router(testcase_router)
 router.include_router(virtual_env_router)
+router.include_router(testplan_router)

@@ -1639,7 +1639,6 @@ const getFileNameFromPath = (path) => {
   display: block;
   padding: 0 15px 1px 15px;
   overflow-x: auto;
-  font-family: 'Fira Code', 'JetBrains Mono', 'Consolas', 'Menlo', 'Monaco', 'Courier New', monospace;
   font-size: 14px;
   line-height: 1.5;
   color: #f3f4f6;

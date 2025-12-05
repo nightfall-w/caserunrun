@@ -98,7 +98,7 @@ class GitCaseSync:
         added_case_list, removed_case_list, modified_case_list = [], [], []
         default_case_info = {
             "workspace_id": self.case_source_relation.workspace_id,  # 用例库ID
-            "specific_type": self.case_source_relation.specific_type,  # WTP定义的测试类型
+            "specific_type": self.case_source_relation.specific_type,  # 测试类型
             "case_type": self.case_source_relation.case_type,  # 用例类型
             "case_commit_id": commit_id,  # 用例commitId
             "case_path": '',  # 用例路径
