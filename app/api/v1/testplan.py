@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from app.core.auth_middleware import get_current_user
 from app.core.database import get_sync_db
 from app.core.response import api_response, HttpErrcode
+from app.testplan.models import CaseType
 from app.user.controller import get_nickname_by_username
 from app.user.request_models import CurrentUser
 from app.testplan.controller import get_test_plan_crud
@@ -18,8 +19,9 @@ from app.testplan.request_models import (
     UpdateTestPlanRequest,
     TestPlanListRequest,
     AddTestCaseRequest,
-    RemoveTestCaseRequest, BatchAddTestCaseRequest
+    RemoveTestCaseRequest, BatchAddTestCaseRequest, TriggerTestPlanRequest
 )
+from utils.custom_logging import logger
 
 router = APIRouter(prefix="/testplan", tags=["测试计划管理"])
 
@@ -35,6 +37,7 @@ def create_test_plan(
 
     try:
         test_plan = crud.create_test_plan(
+            workspace_id=request.workspace_id,
             plan_name=request.plan_name,
             description=request.description,
             test_environment=request.test_environment,
@@ -77,7 +80,7 @@ def get_test_plan_detail(
         return api_response(code=HttpErrcode.PARAMS_ERROR, message="测试计划不存在")
 
     # 获取关联的测试用例
-    associated_test_cases = crud.get_test_cases_by_plan_id(test_plan_id)
+    associated_test_cases, invalid_test_cases = crud.get_test_cases_by_plan_id(test_plan_id)
 
     data = {
         "test_plan_id": test_plan.id,
@@ -96,7 +99,8 @@ def get_test_plan_detail(
         "pending_task_count": test_plan.pending_task_count,
         "create_time": test_plan.create_time,
         "update_time": test_plan.update_time,
-        "associated_test_cases": associated_test_cases
+        "associated_test_cases": associated_test_cases,
+        "invalid_test_cases": invalid_test_cases
     }
 
     return api_response(code=HttpErrcode.SUCCESS, data=data)
@@ -168,11 +172,15 @@ def list_test_plans(
     offset = (request.page_num - 1) * request.page_size
 
     test_plans, total = crud.get_test_plans_with_count(
+        workspace_id=request.workspace_id,
         plan_name=request.plan_name,
         creator=request.creator,
         limit=limit,
         offset=offset
     )
+
+    # for tp in test_plans:
+    #     crud.update_plan_cases_count(tp.id)
 
     data = {
         "test_plans": [
@@ -211,7 +219,7 @@ def add_test_case_to_plan(
     """添加测试用例到测试计划"""
     crud = get_test_plan_crud(db)
 
-    if request.case_type == "pytest":
+    if request.case_type == CaseType.PYTEST:
         success = crud.add_pytest_case_to_plan(request.test_plan_id, request.case_uuid)
     elif request.case_type == "testng":
         success = crud.add_testng_case_to_plan(request.test_plan_id, request.case_uuid)
@@ -238,9 +246,9 @@ def batch_add_test_cases_to_plan(
 
     for case_info in request.cases:
         try:
-            if case_info.case_type == "pytest":
+            if case_info.case_type == CaseType.PYTEST:
                 success = crud.add_pytest_case_to_plan(request.test_plan_id, case_info.case_uuid)
-            elif case_info.case_type == "testng":
+            elif case_info.case_type == CaseType.TESTNG:
                 success = crud.add_testng_case_to_plan(request.test_plan_id, case_info.case_uuid)
             else:
                 failed_cases.append({
@@ -298,6 +306,28 @@ def clear_test_cases_from_plan(
         return api_response(code=HttpErrcode.EXCEPTION, message=f"清空测试用例失败: {str(e)}")
 
 
+@router.delete("/case/clearInvalid/{test_plan_id}")
+def clear_test_cases_from_plan(
+        test_plan_id: int,
+        db: Session = Depends(get_sync_db),
+        userinfo: CurrentUser = Depends(get_current_user)
+):
+    """清空测试计划中的所有测试用例"""
+    crud = get_test_plan_crud(db)
+    test_plan = crud.get_test_plan_by_id(test_plan_id)
+
+    if not test_plan:
+        return api_response(code=HttpErrcode.PARAMS_ERROR, message="测试计划不存在")
+
+    try:
+        # 清空用例关联
+        crud.clear_invalid_cases_from_plan(test_plan_id)
+
+        return api_response(code=HttpErrcode.SUCCESS, message="已清空测试计划中的所有测试用例")
+    except Exception as e:
+        return api_response(code=HttpErrcode.EXCEPTION, message=f"清空测试用例失败: {str(e)}")
+
+
 @router.post("/case/remove")
 def remove_test_case_from_plan(
         request: RemoveTestCaseRequest,
@@ -307,9 +337,9 @@ def remove_test_case_from_plan(
     """从测试计划移除测试用例"""
     crud = get_test_plan_crud(db)
 
-    if request.case_type == "pytest":
+    if request.case_type == CaseType.PYTEST:
         success = crud.remove_pytest_case_from_plan(request.test_plan_id, request.case_uuid)
-    elif request.case_type == "testng":
+    elif request.case_type == CaseType.TESTNG:
         success = crud.remove_testng_case_from_plan(request.test_plan_id, request.case_uuid)
     else:
         return api_response(code=HttpErrcode.PARAMS_ERROR, message="不支持的用例类型")
@@ -318,3 +348,19 @@ def remove_test_case_from_plan(
         return api_response(code=HttpErrcode.EXCEPTION, message="移除测试用例失败")
 
     return api_response(code=HttpErrcode.SUCCESS, message="移除成功")
+
+
+@router.post("/trigger")
+def trigger_test_plan(request: TriggerTestPlanRequest, db: Session = Depends(get_sync_db),
+                      userinfo: CurrentUser = Depends(get_current_user)):
+    """
+    触发测试任务
+    """
+    test_plan_id = request.test_plan_id
+    crud = get_test_plan_crud(db)
+    try:
+        crud.trigger_testplan(test_plan_id=test_plan_id, trigger_user=userinfo.username)
+    except Exception as e:
+        logger.error(f"触发测试计划失败: {str(e)}")
+        return api_response(code=HttpErrcode.EXCEPTION, message=f"触发失败测试计划失败")
+    return api_response(code=HttpErrcode.SUCCESS, message="触发成功")

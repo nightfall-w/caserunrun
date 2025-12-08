@@ -2,21 +2,17 @@
 from __future__ import absolute_import, unicode_literals
 
 import json
-import random
-import re
-import time
 import traceback
 
 from celery.exceptions import SoftTimeLimitExceeded
 
-from app.case_handler.case_enum import CaseType
 from app.case_handler.case_parser import GitCaseParser
 from app.case_handler.case_sync import InitGitCase
 from app.case_handler.gitlab_tool import GitlabAPI
 from app.case_handler.models import PytestCaseModel, TestNGCaseModel
 from app.case_source.models import CaseSourceRelationModel
-from celery_tasks import celery_app
-from app.runner.runner import PytestCaseRunner, create_error_html_report_file
+from app.runner.pytest_runner import PytestCaseRunner, create_error_html_report_file
+from app.testplan.models import CaseType
 from utils.custom_logging import logger
 
 
@@ -34,9 +30,9 @@ def get_script_case_function_count_and_update(uiId: str, git_commit_id: str, db_
     case_content = gitlab_client.get_content(project_id=case_info['git_project_id'],
                                              file_path=case_info['case_path'],
                                              ref=git_commit_id)
-    if case_info['case_type'] == CaseType.Pytest.value:
+    if case_info['case_type'] == CaseType.PYTEST:
         case_functions_list = GitCaseParser.get_python_test_functions_by_context(case_content)
-    elif case_info['case_type'] == CaseType.TestNG.value:
+    elif case_info['case_type'] == CaseType.TESTNG:
         case_functions_list = GitCaseParser.get_testng_test_functions_by_context(case_content)
     else:
         case_functions_list = []
@@ -75,16 +71,13 @@ def init_case_project(case_source_relation: CaseSourceRelationModel):
 
 @celery_app.task(name="pytest_case_task_executor", soft_time_limit=60 * 90,
                  time_limit=60 * 90 + 200)  # pytest串行任务超时时间为90分钟
-def pytest_case_task_executor(workspace_id: int, plan_id: int, plan_result_id: int, wtp_case_info_list: list,
-                              fail_stop: int,
-                              env: int):
+def pytest_case_task_executor(workspace_id: int, plan_id: int, task_id: int, env: str, ):
     """
     【case计划串行执行器】
     :param workspace_id: wtp用例库id
     :param plan_id: 计划id
-    :param plan_result_id: ==taskId 预生成的任务id
     :param env: 环境
-    :param wtp_case_info_list: case列表
+    :param task_id: 任务id
     :param fail_stop: 失败时停止
     """
 
@@ -110,18 +103,6 @@ def pytest_case_task_executor(workspace_id: int, plan_id: int, plan_result_id: i
         :return:
         """
         logger.info(f'{case_job}case执行完成')
-        wtp_api.send_result(workspace_id=workspace_id,
-                            plan_id=plan_id,
-                            plan_result_id=plan_result_id,
-                            case_id=case_job["caseId"],
-                            snapshot_id=case_job.get("snapshotId"),
-                            snapshot_type=case_job.get("snapshotType"),
-                            result_id=case_job["resultId"], result=result,
-                            ui_log_json=json.dumps(case_execute_detail['case_result'], ensure_ascii=False),
-                            # log=case_execute_detail['case_log'],
-                            log="",
-                            case_function_total_count=case_function_total_count,
-                            case_function_success_count=case_function_success_count)
 
     for index, wtp_case_info in enumerate(wtp_case_info_list):
         logger.info(f'准备执行串行case:{wtp_case_info}')
@@ -152,7 +133,7 @@ def pytest_case_task_executor(workspace_id: int, plan_id: int, plan_result_id: i
                                                                              case_name='',
                                                                              case_author='',
                                                                              case_level=0,
-                                                                             case_type=CaseType.Pytest.value,
+                                                                             case_type=CaseType.PYTEST,
                                                                              error_info=f'{wtp_case_info} 执行异常,用例不存在请检查'
                                                                              )}},
                             case_function_total_count=case_function_count,
@@ -240,8 +221,6 @@ def pytest_case_task_executor(workspace_id: int, plan_id: int, plan_result_id: i
     return f'计划: {plan_id} 执行完成'
 
 
-@celery_app.task(name="pytest_case_job_executor", soft_time_limit=60 * 60,
-                 time_limit=60 * 60 + 200)  # pytest并行任务超时时间为1小时
 def pytest_case_job_executor(workspace_id: int, plan_id: int, plan_result_id: int, wtp_case_info: dict, env: int):
     """
     【case job执行处理器】
@@ -295,7 +274,7 @@ def pytest_case_job_executor(workspace_id: int, plan_id: int, plan_result_id: in
                                                                          case_name='',
                                                                          case_author='',
                                                                          case_level=0,
-                                                                         case_type=CaseType.Pytest.value,
+                                                                         case_type=CaseType.PYTEST,
                                                                          error_info=f'{wtp_case_info} 执行异常,用例不存在: {traceback.format_exc()}'
                                                                          )}},
                         case_function_total_count=case_function_count,
@@ -372,8 +351,6 @@ def pytest_case_job_executor(workspace_id: int, plan_id: int, plan_result_id: in
         raise Exception(f'{wtp_case_info} 执行异常: {traceback.format_exc()}')
 
 
-@celery_app.task(name="testng_case_task_executor", soft_time_limit=60 * 90,
-                 time_limit=60 * 90 + 200)  # testng串行任务超时时间为90分钟
 def testng_case_task_executor(workspace_id: int, plan_id: int, plan_result_id: int, wtp_case_info_list: list,
                               fail_stop: int,
                               env: int):
@@ -451,7 +428,7 @@ def testng_case_task_executor(workspace_id: int, plan_id: int, plan_result_id: i
                                                                              case_name='',
                                                                              case_author='',
                                                                              case_level=0,
-                                                                             case_type=CaseType.TestNG.value,
+                                                                             case_type=CaseType.TESTNG,
                                                                              error_info=f'{wtp_case_info} 执行异常,用例不存在请检查'
                                                                              )}},
                             case_function_total_count=case_function_count,
@@ -604,7 +581,7 @@ def testng_case_job_executor(workspace_id: int, plan_id: int, plan_result_id: in
                                                                          case_name='',
                                                                          case_author='',
                                                                          case_level=0,
-                                                                         case_type=CaseType.TestNG.value,
+                                                                         case_type=CaseType.TESTNG,
                                                                          error_info=f'{wtp_case_info} 执行异常,用例不存在请检查'
                                                                          )}},
                         case_function_total_count=case_function_count,

@@ -11,6 +11,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from app.case_source.models import TokenType
 from app.setting.models import SystemConfigModel, WorkspaceConfigModel
+from utils.commonlib import get_host_ip
 
 
 class SettingCRUD:
@@ -212,6 +213,10 @@ class SettingCRUD:
             if not gitlab_url_config or not token_config:
                 raise ValueError("工作空间Git配置不完整")
             return gitlab_url_config.value, token_config.value
+
+    def get_server_domain(self):
+        service_domain_config = self.get_system_config_by_key("SERVER_DOMAIN")
+        return service_domain_config.value if service_domain_config else get_host_ip()
 
 
 def get_setting_crud(db: Session) -> SettingCRUD:

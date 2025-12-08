@@ -6,8 +6,8 @@ import re
 
 from gitlab import GitlabGetError
 
-from app.case_handler.case_enum import CaseType
 from app.case_handler.gitlab_tool import GitlabAPI
+from app.testplan.models import CaseType
 from utils.custom_logging import logger
 
 
@@ -171,7 +171,7 @@ class GitCaseParser:
                 return dict_data
             return dict_data
 
-        if code_type == 'pytest':
+        if code_type == CaseType.PYTEST:
             code_comment_dict = parse_pytest_decoration_string(comment_text)
 
         elif code_type == 'testng':
@@ -462,7 +462,7 @@ def check_case_source_value(gitlab_url: str, token: str, case_type: str, case_so
     :param case_source_value: 用例源值
     :return: True/False
     """
-    if case_type in [CaseType.Pytest.value, CaseType.TestNG.value]:
+    if case_type in [CaseType.PYTEST, CaseType.TESTNG]:
         # 用例类型为testng或pytest 都通过gitlab托管case
         try:
             git_client = GitlabAPI(gitlab_url, token)

@@ -176,12 +176,16 @@
           </template>
         </el-table-column>
 
-        <el-table-column label="操作" width="200" fixed="right">
+        <el-table-column label="操作" width="220" fixed="right">
           <template #default="scope">
             <div class="operation-buttons">
               <el-button size="small" type="primary" text @click="handleEdit(scope.row)"
                          class="operation-button">
                 编辑
+              </el-button>
+              <el-button size="small" type="primary" text @click="handleTrigger(scope.row)"
+                         class="operation-button">
+                执行
               </el-button>
               <el-button size="small" type="success" text @click="handleViewCases(scope.row)"
                          class="operation-button">
@@ -707,6 +711,88 @@
                 </div>
               </div>
             </el-tab-pane>
+            <el-tab-pane label="已失效用例" name="invalid">
+              <div class="selected-case-selector">
+                <!-- 头部操作区 -->
+                <div class="selector-header selected-header">
+                  <div class="selected-count">{{ invalidCases.length }}
+                    个用例已失效，可能是用例被删除或者用例脚本被移动/重命名/删除
+                  </div>
+                  <el-button
+                    type="danger"
+                    size="small"
+                    @click="handleClearInvalidCases"
+                    :disabled="invalidCases.length === 0 || clearLoading"
+                    :loading="clearLoading"
+                  >
+                    清空已失效用例
+                  </el-button>
+                </div>
+
+                <!-- 已选用例滚动区域 -->
+                <div class="selected-case-scroll" @wheel="handleScrollContainerWheel">
+                  <div class="case-cards-container">
+                    <el-card
+                      v-for="item in invalidCases"
+                      :key="item.case_uuid"
+                      class="case-card"
+                      shadow="hover"
+                    >
+                      <div class="case-card-content">
+                        <div class="card-header-row">
+                          <div class="case-type-tags">
+                            <el-tag
+                              :type="item.case_type === 'pytest' ? 'primary' : 'success'"
+                              size="small"
+                            >
+                              {{ item.case_type === 'pytest' ? 'Pytest' : 'TestNG' }}
+                            </el-tag>
+                            <el-tag
+                              type="info"
+                              size="small"
+                            >
+                              {{ getSpecificTypeLabel(item.specific_type) }}
+                            </el-tag>
+                          </div>
+
+                          <!-- 已关联标识（与添加用例页保持一致） -->
+                          <div class="card-invalid-indicator">
+                            <el-icon :size="16" class="associated-icon">
+                              <CloseBold/>
+                            </el-icon>
+                            <span class="associated-text">已失效</span>
+                          </div>
+                        </div>
+                        <div class="card-details">
+                          <div class="case-name">{{ item.case_name }}</div>
+                          <div class="card-footer">
+                            <div class="case-author">作者:
+                              {{
+                                item.case_author?.nickname || item.case_author?.username || '未知'
+                              }}
+                            </div>
+                            <div class="card-actions">
+                              <el-button
+                                type="danger"
+                                size="small"
+                                link
+                                @click="handleRemoveInvalidCase(item.case_uuid)"
+                              >
+                                移除
+                              </el-button>
+                            </div>
+                          </div>
+                        </div>
+
+                      </div>
+                    </el-card>
+                    <div v-if="selectedCases.length === 0" class="no-data">
+                      <el-empty description="暂无已选用例"/>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </el-tab-pane>
           </el-tabs>
         </div>
 
@@ -750,7 +836,7 @@ import {nextTick, onBeforeMount, onMounted, reactive, ref, watch} from 'vue'
 import {useRoute} from 'vue-router'
 import {CronExpressionParser} from 'cron-parser';
 import {ElEmpty, ElMessage, ElMessageBox} from 'element-plus'
-import {Plus, Refresh, Search, Check, InfoFilled} from '@element-plus/icons-vue'
+import {Plus, Refresh, Search, Check, InfoFilled, CloseBold} from '@element-plus/icons-vue'
 import {
   createTestPlan,
   deleteTestPlan,
@@ -760,7 +846,8 @@ import {
   removeTestCaseFromPlan,
   updateTestPlan,
   batchAddTestCaseToPlan,
-  clearTestCaseFromPlan
+  clearTestCaseFromPlan,
+  triggerTestPlan, clearInvalidTestCaseFromPlan
 } from '@/network/api.js'
 
 // 路由参数
@@ -774,6 +861,7 @@ const caseManagementVisible = ref(false)
 const activeTab = ref('add')
 const selectedPlan = ref({})
 const selectedCases = ref([])
+const invalidCases = ref([])
 const saveLoading = ref(false) // 保存用例加载状态
 const clearLoading = ref(false) // 清空用例加载状态
 const lastOpenedPlanId = ref(null)
@@ -1305,6 +1393,7 @@ const fetchTestPlanList = async () => {
   loading.value = true
   try {
     const params = {
+      workspace_id: route.params.id,
       page_num: pagination.page_num,
       page_size: pagination.page_size,
       plan_name: searchForm.plan_name.trim(),
@@ -1419,26 +1508,27 @@ const handleEdit = (row) => {
   dialogVisible.value = true
 }
 
-// 定时器开关变化处理
-const handleScheduleSwitchChange = (val) => {
-  // 关闭定时时清空Cron表达式
-  if (val === 'false') {
-    planForm.schedule_cron_expression = ''
-    // 重置表单验证
-    if (planFormRef.value) {
-      planFormRef.value.clearValidate('schedule_cron_expression')
-    }
-  } else {
-    console.log('开启定时器')
-    console.log('Cron表达式:', planForm.schedule_cron_expression)
-    // 开启定时器时，如果有表达式则解析，否则初始化
-    if (planForm.schedule_cron_expression) {
-      parseCronToForm()
-    } else {
-      initCronForm()
-    }
-  }
-}
+// // 定时器开关变化处理
+// const handleScheduleSwitchChange = (val) => {
+//   // 关闭定时时清空Cron表达式
+//   if (val === 'false') {
+//     planForm.schedule_cron_expression = ''
+//     // 重置表单验证
+//     if (planFormRef.value) {
+//       planFormRef.value.clearValidate('schedule_cron_expression')
+//     }
+//   } else {
+//     console.log('开启定时器')
+//     console.log('Cron表达式:', planForm.schedule_cron_expression)
+//     // 开启定时器时，如果有表达式则解析，否则初始化
+//     if (planForm.schedule_cron_expression) {
+//       parseCronToForm()
+//     } else {
+//       initCronForm()
+//     }
+//   }
+// }
+
 
 // 通知开关变化处理
 const handleNotificationSwitchChange = (val) => {
@@ -1489,6 +1579,41 @@ const handleDelete = (row) => {
   })
 }
 
+
+// 执行测试计划
+const handleTrigger = async (row) => {
+  // 增加二次确认弹窗
+  try {
+    await ElMessageBox.confirm(
+      `确定要执行测试计划 "${row.plan_name}" 吗？`,
+      '确认执行',
+      {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning',
+        center: true
+      }
+    );
+  } catch {
+    // 用户取消执行
+    return;
+  }
+
+  // 用户确认后执行原有逻辑
+  try {
+    const res = await triggerTestPlan({test_plan_id: row.test_plan_id});
+    if (res.code === 0) {
+      ElMessage.success('测试任务触发成功');
+    } else {
+      ElMessage.error(res.message || '测试任务触发失败');
+    }
+  } catch (error) {
+    console.error('测试计划触发异常:', error);
+    ElMessage.error('测试任务触发异常，请重试');
+  }
+};
+
+
 // 提交表单（优化验证和错误处理）
 const submitPlanForm = () => {
   if (!planFormRef.value) return
@@ -1499,6 +1624,7 @@ const submitPlanForm = () => {
     // 处理webhook数据：将换行分隔的字符串转为数组
     const submitForm = {
       ...planForm,
+      workspace_id: route.params.id,
       enable_schedule: planForm.enable_schedule === 'true',
       enable_notification: planForm.enable_notification === 'true',
       wecom_webhooks: planForm.wecom_webhooks ? planForm.wecom_webhooks.split('\n').filter(item => item.trim()) : [],
@@ -1599,14 +1725,17 @@ const fetchSelectedCases = async () => {
     const res = await getTestPlanDetail(selectedPlan.value.test_plan_id)
     if (res.code === 0) {
       // 确保数据格式正确
-      selectedCases.value = Array.isArray(res.data.associated_test_cases) ? res.data.associated_test_cases : []
+      selectedCases.value = Array.isArray(res.data.associated_test_cases) ? res.data.associated_test_cases : [];
+      invalidCases.value = Array.isArray(res.data.invalid_test_cases) ? res.data.invalid_test_cases : [];
     } else {
       selectedCases.value = []
+      invalidCases.value = []
       ElMessage.error(res.message || '获取已选用例列表失败')
     }
   } catch (error) {
     console.error('获取已选用例列表异常:', error)
     selectedCases.value = []
+    invalidCases.value = []
     ElMessage.error('获取已选用例列表失败，请重试')
   }
 }
@@ -1758,6 +1887,56 @@ const handleRemoveSelectedCase = async (caseUuid) => {
   }
 }
 
+// 移除指定失效用例
+const handleRemoveInvalidCase = async (caseUuid) => {
+  if (!caseUuid) return
+
+  // 找到当前用例信息，用于在确认弹窗中显示
+  const currentCase = invalidCases.value.find(c => c.case_uuid === caseUuid)
+  if (!currentCase) {
+    ElMessage.warning('未找到该用例信息')
+    return
+  }
+
+  // 二次确认弹窗
+  try {
+    // 显示确认弹窗
+    await ElMessageBox.confirm(
+      `确定要移除失效用例「${currentCase.case_name}」吗？`, // 弹窗内容（显示用例名称，更直观）
+      '确认移除', // 弹窗标题
+      {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning', // 警告类型，显示黄色图标
+        center: true // 按钮居中显示
+      }
+    )
+
+    // 用户点击"确定"后，执行移除逻辑
+    const res = await removeTestCaseFromPlan({
+      test_plan_id: selectedPlan.value.test_plan_id,
+      case_uuid: caseUuid,
+      case_type: currentCase.case_type || 'pytest' // 直接使用找到的用例类型，更可靠
+    })
+
+    if (res.code === 0) {
+      const index = invalidCases.value.findIndex(c => c.case_uuid === caseUuid)
+      if (index !== -1) {
+        invalidCases.value.splice(index, 1)
+      }
+      ElMessage.success('移除成功')
+    } else {
+      ElMessage.error(res.message || '移除失败')
+    }
+  } catch (error) {
+    // 捕获错误：如果是用户取消（error.type 为 'cancel'），不提示错误
+    if (error !== 'cancel') {
+      console.error('移除用例异常:', error)
+      ElMessage.error('移除失败，请重试')
+    }
+  }
+}
+
 // 保存已选用例（替换为批量添加接口）
 const saveSelectedCases = async () => {
   saveLoading.value = true
@@ -1844,6 +2023,47 @@ const handleClearAllCases = async () => {
     // 用户取消清空
   })
 }
+
+// 新增：清空已关联的所有用例
+const handleClearInvalidCases = async () => {
+  if (selectedCases.length === 0) {
+    ElMessage.warning('暂无已关联的用例')
+    return
+  }
+
+  ElMessageBox.confirm(
+    '确定要清空所有已失效的用例吗？此操作不可恢复！',
+    '确认清空',
+    {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning', // 警告类型，显示黄色图标
+      center: true // 按钮居中显示
+    }
+  ).then(async () => {
+    clearLoading.value = true
+    try {
+      const res = await clearInvalidTestCaseFromPlan({
+        test_plan_id: selectedPlan.value.test_plan_id
+      })
+
+      if (res.code === 0) {
+        invalidCases.value = [] // 清空本地已选列表
+        ElMessage.success('所有已失效用例已清空')
+      } else {
+        ElMessage.error(res.message || '清空失效用例失败')
+      }
+    } catch (error) {
+      console.error('清空失效用例异常:', error)
+      ElMessage.error('清空失败，请重试')
+    } finally {
+      clearLoading.value = false
+    }
+  }).catch(() => {
+    // 用户取消清空
+  })
+}
+
 
 // 格式化时间（优化兼容性）
 const formatTime = (timeString) => {
@@ -2527,6 +2747,22 @@ const handleCaseCurrentChange = (val) => {
   margin-left: 8px;
 }
 
+.card-invalid-indicator {
+  position: static; /* 取消绝对定位 */
+  right: 12px;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background-color: #858585;
+  color: white;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  box-shadow: 0 2px 6px rgba(133, 133, 133, 0.3);
+  margin-left: 8px;
+}
+
 .associated-text {
   font-size: 12px;
   font-weight: 500;
@@ -3180,8 +3416,10 @@ const handleCaseCurrentChange = (val) => {
 
 .time-item {
   font-size: 13px;
-  color: #606266;
+  color: chocolate;
   padding: 2px 0;
+  font-style: italic;
+  font-weight: bold;
 }
 
 .no-execution {

@@ -377,8 +377,20 @@ export function removeTestCaseFromPlan(params) {
 }
 
 /**
- * 从测试计划移除测试用例
+ * 从测试计划清空所有测试用例
  */
 export function clearTestCaseFromPlan(params) {
   return request.delete('/api/v1/testplan/case/clear/' + params.test_plan_id);
+}
+
+
+/**
+ * 从测试计划清空失效测试用例
+ */
+export function clearInvalidTestCaseFromPlan(params) {
+  return request.delete('/api/v1/testplan/case/clearInvalid/' + params.test_plan_id);
+}
+
+export function triggerTestPlan(params) {
+  return request.post('/api/v1/testplan/trigger', params);
 }

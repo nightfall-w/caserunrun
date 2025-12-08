@@ -6,26 +6,25 @@
 """
 import copy
 import traceback
-from collections import Counter
 
-from fastapi import APIRouter, Depends, Request
-from gitlab import GitlabAuthenticationError
+from fastapi import APIRouter, Depends
+from gitlab import GitlabAuthenticationError, GitlabGetError
 from requests import ConnectTimeout, ConnectionError
 from requests.exceptions import InvalidURL
 from sqlalchemy import and_, select
 from sqlalchemy.orm import Session
 
-from app.case_handler.case_enum import CaseType
 from app.case_handler.case_parser import check_case_source_value
 from app.case_handler.case_sync import get_case_model_by_case_type, init_case_project, GitCaseSync
 from app.case_handler.gitlab_tool import GitlabAPI
+from app.case_source.models import CaseSourceRelationModel
+from app.case_source.request_models import BindCaseSourceRequest, UpdateCaseSourceRequest, DeleteCaseSourceRequest, \
+    CaseSourceListRequest, CheckTokenRequest
 from app.core.auth_middleware import get_current_user
 from app.core.database import get_sync_db
 from app.core.response import HttpErrcode, api_response
-from app.case_source.models import CaseSourceRelationModel, TokenType
-from app.case_source.request_models import BindCaseSourceRequest, UpdateCaseSourceRequest, DeleteCaseSourceRequest, \
-    CaseSourceListRequest, CheckTokenRequest
 from app.setting.controller import SettingCRUD
+from app.testplan.models import CaseType
 from app.user.request_models import CurrentUser
 from utils.custom_logging import logger
 
@@ -124,7 +123,7 @@ def bind_case_source(request: BindCaseSourceRequest, db: Session = Depends(get_s
     server_domain = setting_crud.get_system_config_by_key("SERVER_DOMAIN").value
     try:
         init_case_project(gitlab_url=gitlab_url, token=token, case_source_relation=case_source_relation)
-        if case_source_relation.case_type in [CaseType.Pytest.value, CaseType.TestNG.value]:
+        if case_source_relation.case_type in [CaseType.PYTEST, CaseType.TESTNG]:
             GitlabAPI(gitlab_url=gitlab_url, token=token).create_webhook(
                 project_id=case_source_relation.case_source_value['projectId'],
                 url=server_domain + '/api/case/GitCaseSync'
@@ -460,4 +459,11 @@ def get_project_branches(workspace_id: int, git_project_id: int, token_type: str
     setting_crud = SettingCRUD(db)
     gitlab_url, token = setting_crud.get_gitlab_credentials(token_type=token_type, workspace_id=workspace_id)
     gitlab_client = GitlabAPI(gitlab_url=gitlab_url, token=token)
-    return api_response(data=gitlab_client.get_project_branches(project_id=git_project_id))
+    try:
+        return api_response(data=gitlab_client.get_project_branches(project_id=git_project_id))
+    except Exception as e:
+        if isinstance(e, GitlabGetError) and e.response_code == 404:
+            return api_response(code=HttpErrcode.NOT_FOUND,
+                                message=f"当前凭证权限下不存在ID为:{git_project_id}的项目，请您确认项目ID是否正确")
+        logger.error(f"获取项目分支列表失败: {traceback.format_exc()}")
+        return api_response(code=HttpErrcode.EXCEPTION, message="获取项目分支列表异常，请检查项目ID与凭证是否有效")

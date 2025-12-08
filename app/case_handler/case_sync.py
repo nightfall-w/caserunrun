@@ -12,7 +12,6 @@ import gitlab
 from sqlalchemy import and_, or_, select
 from sqlalchemy.orm import Session
 
-from app.case_handler.case_enum import CaseType
 from app.case_handler.case_parser import PytestCaseParser, TestNGCaseParser
 from app.case_handler.gitlab_tool import GitlabAPI
 from app.case_handler.models import PytestCaseModel, TestNGCaseModel
@@ -20,6 +19,7 @@ from app.core.database import get_sync_db
 from app.core.orm_tools import model_to_dict
 from app.case_source.models import CaseSourceRelationModel
 from app.setting.controller import SettingCRUD
+from app.testplan.models import CaseType
 from utils.commonlib import now
 from utils.custom_logging import logger
 
@@ -29,9 +29,9 @@ def get_case_model_by_case_type(case_type: str):
     根据case类型获取case数据库模型
     :return:
     """
-    if case_type == CaseType.Pytest.value:
+    if case_type == CaseType.PYTEST:
         return PytestCaseModel
-    elif case_type == CaseType.TestNG.value:
+    elif case_type == CaseType.TESTNG:
         return TestNGCaseModel
     else:
         raise Exception(f'不支持的case类型: {case_type}')
@@ -64,8 +64,8 @@ class GitCaseSync:
         # 查找case类型为webui的用例库关系并且case_source_value为git_project_id的用例库关系
         case_source_relations = self.db_session.query(CaseSourceRelationModel).filter(
             or_(
-                CaseSourceRelationModel.case_type == CaseType.Pytest.value,
-                CaseSourceRelationModel.case_type == CaseType.TestNG.value
+                CaseSourceRelationModel.case_type == CaseType.PYTEST,
+                CaseSourceRelationModel.case_type == CaseType.TESTNG
             ),
             CaseSourceRelationModel.case_source_value['projectId'] == self.git_project_id,
             CaseSourceRelationModel.case_source_value['branch_name'] == self.branch_name
@@ -334,12 +334,12 @@ class GitCaseSync:
         # 找到wtp与此gitProject的绑定关系
         for case_source_relation in case_source_relations:
             # 根据用例类型同步case
-            if case_source_relation.case_type == CaseType.Pytest.value:
+            if case_source_relation.case_type == CaseType.PYTEST:
                 self.case_source_relation, self.case_model, self.case_parser = case_source_relation, \
                     PytestCaseModel, PytestCaseParser
                 self.sync_case()
 
-            elif case_source_relation.case_type == CaseType.TestNG.value:
+            elif case_source_relation.case_type == CaseType.TESTNG:
                 self.case_source_relation, self.case_model, self.case_parser = case_source_relation, \
                     TestNGCaseModel, TestNGCaseParser
                 self.sync_case()  # TestNG的case与pytest的case同步逻辑一致 可以直接复用
@@ -484,9 +484,9 @@ class InitGitCase:
         同步case
         """
         # 根据用例类型同步case
-        if self.case_source_relation.case_type == CaseType.Pytest.value:
+        if self.case_source_relation.case_type == CaseType.PYTEST:
             self.case_model, self.case_parser = PytestCaseModel, PytestCaseParser
-        elif self.case_source_relation.case_type == CaseType.TestNG.value:
+        elif self.case_source_relation.case_type == CaseType.TESTNG:
             self.case_model, self.case_parser = TestNGCaseModel, TestNGCaseParser
         else:
             # 无效的用例类型 不同步case

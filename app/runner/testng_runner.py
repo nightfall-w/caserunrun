@@ -15,11 +15,13 @@ import psutil
 import pytz
 from celery.exceptions import SoftTimeLimitExceeded
 
-from app.case_handler.case_enum import CaseType
 from app.case_handler.case_parser import GitCaseParser
 from app.case_handler.models import TestNGCaseModel
-from app.runner.runner import sync_last_git_project_to_local, terminate_process, create_error_html_report_file
-from engineproxy.settings import MEDIA_ROOT, logger, REPORT_DOMAIN, MEDIA_URL
+from app.runner.pytest_runner import sync_last_git_project_to_local, terminate_process, create_error_html_report_file
+from utils.custom_logging import logger
+from app.core.config import MEDIA_ROOT, REPORT_URL
+
+from app.testplan.models import CaseType
 
 
 class TestNGCaseRunner:
@@ -47,7 +49,8 @@ class TestNGCaseRunner:
         """
 
         # 同步Git项目到本地指定commit_id版本
-        git_project_path = sync_last_git_project_to_local(workspace_id=workspace_id, project_id=project_id, case_path=case_path,
+        git_project_path = sync_last_git_project_to_local(workspace_id=workspace_id, project_id=project_id,
+                                                          case_path=case_path,
                                                           branch_name=branch_name, commit_id=commit_id)
 
         mvn = 'mvn'  # maven命令的路径
@@ -162,7 +165,7 @@ class TestNGCaseRunner:
                                                               git_project_id=project_id).first()
                 create_error_html_report_file(workspace_id=workspace_id, project_id=project_id, result_id=result_id,
                                               case_path=case_path, git_project_name=db_case_info.git_project_name,
-                                              case_type=CaseType.TestNG.value, case_name=db_case_info.case_name,
+                                              case_type=CaseType.TESTNG, case_name=db_case_info.case_name,
                                               case_level=db_case_info.case_level,
                                               case_author=db_case_info.case_author,
                                               error_info=f"case运行异常，未能生成详细测试报告: {read_data}")

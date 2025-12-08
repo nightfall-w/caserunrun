@@ -13,14 +13,16 @@ import xml.etree.ElementTree as ET
 import psutil
 from celery.exceptions import SoftTimeLimitExceeded
 
-from app.case_handler.case_enum import CaseType
 from app.case_handler.case_parser import GitCaseParser
 from app.case_handler.gitlab_tool import GitlabAPI
 from app.case_handler.models import PytestCaseModel
-from app.core.config import MEDIA_ROOT
+from app.core.config import MEDIA_ROOT, REPORT_URL
+from app.core.database import get_sync_db
+from app.setting.controller import get_setting_crud
+from app.testplan.models import CaseType
 from utils.custom_logging import logger
 
-MEDIA_ROOT, logger, MEDIA_URL, REPORT_DOMAIN
+setting_curd = get_setting_crud(get_sync_db())
 
 
 def create_error_html_report_file(workspace_id: int, project_id: int, git_project_name: str, case_type: str,
@@ -40,8 +42,8 @@ def create_error_html_report_file(workspace_id: int, project_id: int, git_projec
     :param error_info: 要在html中展示的错误信息
     :return: case报告的url
     """
-    case_report_url = REPORT_DOMAIN + os.path.join(
-        MEDIA_URL, 'html-report', str(workspace_id), str(project_id), str(result_id), 'error.html')
+    case_report_url = setting_curd.get_server_domain() + os.path.join(
+        REPORT_URL, str(workspace_id), str(project_id), str(result_id), 'error.html')
     case_report_dir = os.path.join(MEDIA_ROOT, 'html-report', str(workspace_id), str(project_id), str(result_id))
     if not os.path.exists(case_report_dir):
         os.makedirs(case_report_dir)
@@ -265,7 +267,7 @@ class PytestCaseRunner:
                 error_report_url = create_error_html_report_file(workspace_id=workspace_id, project_id=project_id,
                                                                  git_project_name=db_case_info.git_project_name,
                                                                  result_id=result_id,
-                                                                 case_type=CaseType.Pytest.value,
+                                                                 case_type=CaseType.PYTEST,
                                                                  case_path=case_path, case_name=db_case_info.case_name,
                                                                  case_level=db_case_info.case_level,
                                                                  case_author=db_case_info.case_author,

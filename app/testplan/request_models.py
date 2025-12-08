@@ -4,6 +4,7 @@ from typing import Optional, List
 
 class CreateTestPlanRequest(BaseModel):
     """创建测试计划请求"""
+    workspace_id: int
     plan_name: str
     description: Optional[str] = ""
     test_environment: str  # QA/PL/OL
@@ -35,6 +36,7 @@ class UpdateTestPlanRequest(BaseModel):
 
 class TestPlanListRequest(BaseModel):
     """测试计划列表请求"""
+    workspace_id: int
     page_num: int = 1
     page_size: int = 10
     plan_name: Optional[str] = None
@@ -65,3 +67,8 @@ class BatchAddTestCaseRequest(BaseModel):
     """批量添加测试用例请求"""
     test_plan_id: int
     cases: List[TestCaseInfo]
+
+
+class TriggerTestPlanRequest(BaseModel):
+    """触发测试计划请求"""
+    test_plan_id: int

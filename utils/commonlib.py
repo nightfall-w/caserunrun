@@ -11,7 +11,7 @@ import random
 import time
 import uuid
 from functools import partial
-
+import socket
 import pytz
 from dotenv import load_dotenv
 from tenacity import stop_after_attempt, retry, wait_exponential
@@ -179,3 +179,22 @@ def random_integer():
     随机整型
     """
     return random.randint(1, 900000)
+
+
+# 在 commonlib.py 中修改 get_host_ip 函数
+def get_host_ip():
+    """
+    获取主机ip
+    """
+    try:
+        # 尝试连接外部地址来获取本地IP
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+            s.connect(("8.8.8.8", 80))
+            ip = s.getsockname()[0]
+        return ip
+    except Exception:
+        # fallback到localhost
+        return "127.0.0.1"
+
+
+print(get_host_ip())

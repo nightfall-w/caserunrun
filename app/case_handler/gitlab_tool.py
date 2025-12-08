@@ -200,7 +200,7 @@ class GitlabAPI(object):
                           commit_id: str = ''):
         """
         从gitlab拉取代码
-        :param workspace_id: wtp项目id
+        :param workspace_id: workspace id
         :param project_id: 项目id
         :param branch_name: 分支名
         :param commit_id: 提交id (非必填)
