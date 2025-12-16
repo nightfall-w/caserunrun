@@ -1,6 +1,7 @@
 """
 funboost现在 新增 命令行启动消费 发布  和清空消息
 """
+import os
 import sys
 from pathlib import Path
 
@@ -27,7 +28,9 @@ env_dict['project_root_path'] = project_root_path
 if __name__ == '__main__':
     # booster_dirs 用户可以自己增加扫描的文件夹,这样可以命令行少传了 --booster_dirs_str
     # BoosterDiscovery 可以多次调用
-    BoosterDiscovery(project_root_path, booster_dirs=[], max_depth=1,
+    BoosterDiscovery(project_root_path,
+                     booster_dirs=[os.path.join(project_root_path, 'app', 'runner')],
+                     max_depth=1,
                      py_file_re_str=None).auto_discovery()  # 这个最好放到main里面,如果要扫描自身文件夹,没写正则排除文件本身,会无限懵逼死循环导入
     fire.Fire(BoosterFire, )
 

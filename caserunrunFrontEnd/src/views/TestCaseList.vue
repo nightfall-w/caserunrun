@@ -141,11 +141,6 @@
         :row-style="{ transition: 'all 0.25s ease' }"
         border
       >
-        <el-table-column prop="id" label="ID" width="180">
-          <template #default="scope">
-            <span class="id-text">{{ scope.row.git_project_name }}-{{ scope.row.id }}</span>
-          </template>
-        </el-table-column>
 
         <el-table-column prop="case_type" label="用例类型" width="90">
           <template #default="scope">
@@ -1630,7 +1625,7 @@ const getFileNameFromPath = (path) => {
 }
 
 .fullscreen-code-container {
-  height: 100%;
+  height: 96%;
   overflow: auto;
   padding: 0 20px 20px 20px;
 }

@@ -148,6 +148,7 @@ class TestTaskModel(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     workspace_id = Column(Integer, nullable=False, comment="workspace用例库ID")
     test_plan_id = Column(Integer, nullable=False, comment="关联的测试计划id")
+    test_environment = Column(String(100), nullable=False, comment="执行环境")
     fail_stop = Column(Boolean, default=False, comment="失败停止,仅串行任务")
     task_execution_mode = Column(String(20), nullable=False, comment="并发方式(串行/并行)")
     task_status = Column(String(20), nullable=False, comment="任务状态(运行中/完成)")
@@ -159,6 +160,7 @@ class TestTaskModel(Base):
     __table_args__ = (
         CheckConstraint(task_execution_mode.in_([mode for mode in ExecutionMode]),
                         name='check_task_execution_mode'),
+        CheckConstraint(test_environment.in_([env for env in TestEnvironment]), name='check_test_environment'),
         CheckConstraint(task_status.in_([status for status in TaskStatus]), name='check_task_status'),
     )
 
@@ -176,6 +178,8 @@ class TaskJobModel(Base):
     case_uuid = Column(String(400), nullable=False, comment="case uuid")
     case_path = Column(String(400), nullable=False, comment="case路径")
     case_type = Column(String(20), nullable=False, comment="case类型")
+    report_path = Column(String(400), nullable=False, comment="报告路径")
+    case_function_list = Column(JSON, default=[], nullable=True, comment="case方法列表")
     job_status = Column(String(20), nullable=False, comment="作业状态")
     job_result = Column(JSON, default=None, nullable=True, comment="作业结果")
     create_time = Column(DateTime, default=now, comment="创建时间")

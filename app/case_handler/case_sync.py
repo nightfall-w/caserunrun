@@ -61,7 +61,7 @@ class GitCaseSync:
         """
         根据git_project_id识别git项目类型以及项目是否有效
         """
-        # 查找case类型为webui的用例库关系并且case_source_value为git_project_id的用例库关系
+        # 用例库关系并且case_source_value为git_project_id的用例库关系
         case_source_relations = self.db_session.query(CaseSourceRelationModel).filter(
             or_(
                 CaseSourceRelationModel.case_type == CaseType.PYTEST,
@@ -331,7 +331,6 @@ class GitCaseSync:
             # 无效的gitProjectId 不同步case
             return False
 
-        # 找到wtp与此gitProject的绑定关系
         for case_source_relation in case_source_relations:
             # 根据用例类型同步case
             if case_source_relation.case_type == CaseType.PYTEST:
@@ -532,6 +531,7 @@ class InitGitCase:
             removed_case_list.append(historical_case_dict)
             # 从数据库删除历史老旧case
             self.db_session.delete(historical_case)
+        self.db_session.commit()
 
         # 发生修改的case 初始化case时都是空
         modified_case_list = []

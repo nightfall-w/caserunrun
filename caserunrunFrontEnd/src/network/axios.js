@@ -73,7 +73,7 @@ service.interceptors.response.use(
             // 重定向到登录页
             routerInstance.push('/login');
           }
-          error.message = '未认证的访问';
+          // error.message = '未认证的访问';
           break;
         case 403:
           // 无权限，不重定向到登录页，让具体页面处理

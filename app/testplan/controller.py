@@ -9,11 +9,12 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func, ColumnElement
 
 from app.case_handler.case_parser import GitCaseParser
+from app.runner.tasks import pytest_case_task_executor, pytest_case_job_executor
 from app.user.controller import get_nickname_by_username
 from utils.commonlib import now
 from utils.custom_logging import logger
 from app.testplan.models import TestPlanModel, TestPlanPytestCaseModel, TestPlanTestNGCaseModel, CaseType, \
-    TestTaskModel, TaskJobModel, TaskStatus, JobStatus
+    TestTaskModel, TaskJobModel, TaskStatus, JobStatus, ExecutionMode
 from app.case_handler.models import PytestCaseModel, TestNGCaseModel
 
 
@@ -443,7 +444,7 @@ class TestPlanCRUD:
             raise Exception(f"测试计划id：{test_plan_id} 不存在")
 
         # 获取所有关联的用例
-        associated_cases = self.get_test_cases_by_plan_id(test_plan_id)
+        associated_cases, invalid_cases = self.get_test_cases_by_plan_id(test_plan_id)
         test_plan.total_case_count = len(associated_cases)
 
         # 有效的用例
@@ -473,6 +474,7 @@ class TestPlanCRUD:
                              test_plan_id=test_plan_id,
                              fail_stop=test_plan.fail_stop,
                              task_execution_mode=test_plan.execution_mode,
+                             test_environment=test_plan.test_environment,
                              task_status=TaskStatus.PENDING,
                              create_user=trigger_user,
                              create_time=now(),
@@ -490,6 +492,7 @@ class TestPlanCRUD:
                                case_name=case.case_name,
                                case_uuid=case.case_uuid,
                                case_type=case.case_type,
+                               case_function_list=case.case_function_list,
                                job_status=JobStatus.PENDING,
                                case_path=case.case_path,
                                create_time=now(),
@@ -498,8 +501,26 @@ class TestPlanCRUD:
                                )
             self.db.add(job)
             self.db.commit()
-            test_plan.running_task_count += 1
+            test_plan.pending_task_count += 1
             self.db.commit()
+
+        if task.task_execution_mode == ExecutionMode.SERIAL:
+            pytest_case_task_executor.push(
+                task_id=task_id,
+                workspace_id=test_plan.workspace_id,
+                plan_id=test_plan_id,
+            )
+        elif task.task_execution_mode == ExecutionMode.PARALLEL:
+            case_jobs = self.db.query(TaskJobModel).filter(
+                TaskJobModel.task_id == task_id
+            )
+            for case_job in case_jobs:
+                pytest_case_job_executor.push(
+                    task_id=task_id,
+                    workspace_id=test_plan.workspace_id,
+                    plan_id=test_plan_id,
+                    job_id=case_job.id
+                )
 
 
 def get_test_plan_crud(db: Session) -> TestPlanCRUD:

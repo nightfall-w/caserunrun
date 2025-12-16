@@ -140,7 +140,7 @@ def create_python_venv(workspace_id, python_version: str, project_name: str, pro
         # 创建虚拟环境
         subprocess.run(
             [python_exec, "-m", "venv", venv_path],
-            check=True, capture_output=True
+            check=True, capture_output=True, text=True
         )
 
         # 安装requirements.txt依赖

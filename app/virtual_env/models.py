@@ -19,7 +19,7 @@ class PythonVirtualEnvModel(Base):
     Python虚拟环境模型
     用于存储Python虚拟环境的相关信息
     """
-    __tablename__ = "python_virtual_envs"
+    __tablename__ = "python_envs"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     # 环境名称

@@ -9,88 +9,81 @@ import subprocess
 import time
 import traceback
 import xml.etree.ElementTree as ET
+from datetime import datetime
 
 import psutil
-from celery.exceptions import SoftTimeLimitExceeded
+from funboost.utils.dependency_packages.mongomq.mongomq import JobStatus
+from funboost.utils.func_timeout.exceptions import FunctionTimedOut
+from jinja2 import Environment, FileSystemLoader
 
 from app.case_handler.case_parser import GitCaseParser
 from app.case_handler.gitlab_tool import GitlabAPI
 from app.case_handler.models import PytestCaseModel
-from app.core.config import MEDIA_ROOT, REPORT_URL
+from app.case_source.models import CaseSourceRelationModel
+from app.core.config import REPORT_URL, CASE_HOUSE_ROOT, REPORT_ROOT
 from app.core.database import get_sync_db
 from app.setting.controller import get_setting_crud
 from app.testplan.models import CaseType
+from app.virtual_env.models import PythonVirtualEnvModel
 from utils.custom_logging import logger
 
-setting_curd = get_setting_crud(get_sync_db())
+setting_curd = get_setting_crud(next(get_sync_db()))
 
 
-def create_error_html_report_file(workspace_id: int, project_id: int, git_project_name: str, case_type: str,
-                                  case_path: str,
-                                  case_name: str, case_author: str, case_level: int, result_id: int, error_info: str):
+def create_error_html_report_file(workspace_id: int, git_project_name: str, case_type: str,
+                                  case_path: str, case_name: str, case_author: str, case_level: int, result: str,
+                                  error_info: str, report_path: str, report_url: str):
     """
-    创建错误的html报告文件
-    :param case_level: 用例等级
-    :param case_type: 用例类型
-    :param case_author: 用例作者
-    :param case_name: 用例名称
-    :param git_project_name: 用例所属的gitlab项目名称
-    :param case_path: 用脚本路径
+    使用Jinja2渲染错误HTML报告文件
     :param workspace_id: 用例库ID
-    :param project_id: gitlab项目ID
-    :param result_id: result_id
-    :param error_info: 要在html中展示的错误信息
+    :param git_project_name: 用例所属的gitlab项目名称
+    :param case_type: 用例类型
+    :param case_path: 用脚本路径
+    :param case_name: 用例名称
+    :param case_author: 用例作者
+    :param case_level: 用例等级
+    :param result: 运行结果
+    :param error_info: 错误信息
+    :param report_path: 报告路径
+    :param report_url: 报告url
     :return: case报告的url
     """
-    case_report_url = setting_curd.get_server_domain() + os.path.join(
-        REPORT_URL, str(workspace_id), str(project_id), str(result_id), 'error.html')
-    case_report_dir = os.path.join(MEDIA_ROOT, 'html-report', str(workspace_id), str(project_id), str(result_id))
-    if not os.path.exists(case_report_dir):
-        os.makedirs(case_report_dir)
-    case_report_path = os.path.join(case_report_dir, 'error.html')
-    with open(case_report_path, 'w', encoding='utf-8') as f:
-        f.write(
-            """<!DOCTYPE html>
-            <html lang="en">
-            <head>
-            <meta charset="UTF-8">
-            <title>测试报告</title>
-            <style>
-               body {{ font-family: Arial, sans-serif; margin: 0; padding: 0; }}
-               .container {{ width: 80%; margin: 20px auto; }}
-               h1, h2 {{ color: #333; }}
-               .overview, .details {{ background-color: #f2f2f2; padding: 20px; margin-top: 20px; }}
-               .overview p {{ margin: 10px 0; }}
-               .key {{ font-weight: 300; }}
-               .value {{ color: darkgoldenrod; }}
-               .error {{ color: red; }}
-            </style>
-            </head>
-            <body>
-                <div class="container">
-                    <h1>测试报告</h1>
-                    <div class="overview">
-                        <h2>概览</h2>
-                        <p><span class="key">用例库ID:</span> <span class="value">{}</span></p>
-                        <p><span class="key">用例类型:</span> <span class="value">{}</span></p>
-                        <p><span class="key">git项目名称:</span> <span class="value">{}</span></p>
-                        <p><span class="key">用例名称:</span> <span class="value">{}</span></p>
-                        <p><span class="key">用例路径:</span> <span class="value">{}</span></p>
-                        <p><span class="key">用例等级:</span> <span class="value">{}</span></p>
-                        <p><span class="key">用例负责人:</span> <span class="value">{}</span></p>
-                        <p><span class="key">运行结果:</span> <span class="value error">失败</span></p>
-                    </div>
-                    <div class="details">
-                        <h2>详细信息</h2>
-                        <p>在执行脚本时遇到了一些问题，以下是错误信息：</p>
-                        <p class="error">错误信息：{}</p>
-                        <!-- 更多错误信息 -->
-                    </div>
-                </div>
-            </body>
-            </html>""".format(
-                workspace_id, case_type, git_project_name, case_name, case_path, case_level, case_author, error_info))
-    return case_report_url
+    try:
+        # 创建Jinja2环境
+        template_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'universal_test_report', 'templates')
+        env = Environment(loader=FileSystemLoader(template_dir))
+
+        # 加载模板
+        template = env.get_template('error_template.html')
+
+        # 准备渲染数据
+        data = {
+            'workspace_id': workspace_id,
+            'git_project_name': git_project_name,
+            'case_type': case_type,
+            'case_path': case_path,
+            'case_name': case_name,
+            'case_author': case_author,
+            'case_level': case_level,
+            'result': result,
+            'error_info': error_info,
+            'datetime': datetime
+        }
+
+        # 获取用例报告路径的上级目录
+        case_report_dir = os.path.dirname(report_path)
+        if not os.path.exists(case_report_dir):
+            os.makedirs(case_report_dir)
+
+        # 渲染模板并写入文件
+        with open(report_path, 'w', encoding='utf-8') as f:
+            f.write(template.render(data))
+
+        return report_url
+    except Exception as e:
+        logger.error(f"创建错误报告文件时出错：{e}")
+        logger.error(traceback.format_exc())
+        return None
 
 
 def terminate_process(pid):
@@ -109,8 +102,19 @@ def terminate_process(pid):
         logger.info(f"终止进程 {pid} 失败：{e}。")
 
 
-def sync_last_git_project_to_local(workspace_id: int, project_id: int, case_path: str, branch_name: str = 'master',
-                                   commit_id: str = ''):
+def get_git_token(token_type: str, workspace_id: int) -> tuple[str, str]:
+    """
+    获取gitlab的token
+    :return:
+    """
+    gitlab_url, token = setting_curd.get_gitlab_credentials(token_type=token_type, workspace_id=workspace_id)
+    if gitlab_url and token:
+        return gitlab_url, token
+    else:
+        raise Exception('请先配置gitlab的token')
+
+
+def sync_last_git_project_to_local(workspace_id: int, project_id: int, case_path: str, branch_name: str = 'master'):
     """
     同步最新的case项目到本地
     :param workspace_id: 用例库ID
@@ -120,20 +124,24 @@ def sync_last_git_project_to_local(workspace_id: int, project_id: int, case_path
     :param commit_id: case commit_id
     :return:
     """
+    # 获取用例源token类型
+    db = next(get_sync_db())
+    token_type = db.query(CaseSourceRelationModel).filter(CaseSourceRelationModel.workspace_id == workspace_id,
+                                                          CaseSourceRelationModel.case_source_value[
+                                                              "projectId"] == project_id).first().token_type
+    gitlab_url, token = get_git_token(token_type=token_type, workspace_id=workspace_id)
     # case项目名称
-    gitlab = GitlabAPI()
+    gitlab = GitlabAPI(gitlab_url=gitlab_url, token=token)
     git_project_name = gitlab.get_project_by_id(id=project_id).name
 
     # 判断case项目commit路径是否存在 不存在则拉取代码
-    git_project_path = os.path.join(MEDIA_ROOT, 'case_house', str(workspace_id), str(project_id), commit_id,
-                                    branch_name,
-                                    git_project_name)
+    git_project_path = os.path.join(CASE_HOUSE_ROOT, str(workspace_id), str(project_id),
+                                    branch_name, git_project_name)
     for i in range(20):
         case_exist = os.path.exists(os.path.join(git_project_path, case_path))
         success, pull_status, case_project_local_path = gitlab.pull_project_code(workspace_id=workspace_id,
                                                                                  project_id=project_id,
-                                                                                 branch_name=branch_name,
-                                                                                 commit_id=commit_id)
+                                                                                 branch_name=branch_name)
         if case_exist and success:
             return git_project_path
         else:
@@ -143,85 +151,132 @@ def sync_last_git_project_to_local(workspace_id: int, project_id: int, case_path
         raise Exception(f"case项目路径不存在, case拉取可能失败: {os.path.join(git_project_path, case_path)}")
 
 
+def cleanup_processes(processes: list[subprocess.Popen]):
+    """清理所有未完成的进程"""
+    print("正在清理未完成进程...", len(processes))
+    for proc in processes:  # 使用切片复制避免迭代时修改
+        try:
+            if proc.poll() is None:  # 进程仍在运行
+                print("正在终止进程:", proc.pid)
+                # 获取当前进程的所有子进程
+                children = []
+                try:
+                    children = psutil.Process(proc.pid).children(recursive=True)
+                except Exception as e:
+                    logger.error(f"获取进程 {proc.pid} 的子进程失败: {e}")
+
+                # 先终止所有子进程
+                for child in children:
+                    try:
+                        print(f"正在终止子进程: {child.pid}")
+                        child.terminate()
+                        try:
+                            child.wait(timeout=5)
+                        except subprocess.TimeoutExpired:
+                            child.kill()
+                    except Exception as e:
+                        logger.error(f"终止子进程 {child.pid} 失败: {e}")
+
+                # 再终止父进程
+                proc.terminate()
+                try:
+                    proc.wait(timeout=5)
+                except subprocess.TimeoutExpired:
+                    proc.kill()
+
+        except Exception as e:
+            logger.error(f"清理进程 {proc.pid} 时发生错误: {e}")
+        finally:
+            if proc.poll() is not None:  # 进程已结束
+                print("进程已结束:", proc.pid)
+            else:
+                print("进程未正常结束:", proc.pid)
+
+
 class PytestCaseRunner:
     """
     【pytest case的运行管理器】
     """
 
     @classmethod
-    def executor(cls, workspace_id: int, case_path: str, project_id: int, result_id: int, env: int, commit_id: str,
-                 branch_name="master"):
+    def executor(cls, testplan_id: int, task_id: int, job_id: int, workspace_id: int, case_path: str, case_name: str,
+                 project_id: int, case_uuid: str,
+                 env: int, branch_name):
         """
         执行器
+        :param testplan_id: 任务计划id
+        :param task_id: 任务id
+        :param job_id: 工作id
         :param workspace_id: 用例库id
-        :param case_path: case路径
+        :param case_path: case脚本路径
+        :param case_uuid: case uuid
+        :param case_name: case脚本名称
         :param project_id: 项目id
-        :param result_id: case执行结果的唯一标识
         :param env: 执行环境
-        :param commit_id: 要clone的commit_id
         :param branch_name: 分支名称
         :return:
         """
+        _processes = []  # 进程列表
+
         git_project_path = sync_last_git_project_to_local(workspace_id=workspace_id, project_id=project_id,
                                                           case_path=case_path,
-                                                          branch_name=branch_name, commit_id=commit_id)
-        # 判断case项目是否存在venv虚拟环境
-        if os.path.exists(os.path.join(git_project_path, 'venv')):
-            venv_path = os.path.join(git_project_path, 'venv/bin/pytest')
-        else:
-            venv_path = 'pytest'
-
+                                                          branch_name=branch_name)
+        # 获取python虚拟环境与解释器路径
+        db = next(get_sync_db())
+        venv_id = db.query(CaseSourceRelationModel).filter(CaseSourceRelationModel.workspace_id == workspace_id,
+                                                           CaseSourceRelationModel.case_source_value[
+                                                               "projectId"] == project_id).first().venv_id
+        venv_info = db.query(PythonVirtualEnvModel).filter(PythonVirtualEnvModel.id == venv_id).first()
+        if not venv_info:
+            raise Exception(f'请先配置python虚拟环境,venv_id-{project_id}不存在')
+        venv_path = venv_info.path
+        pytest_path = os.path.join(venv_path, 'bin', 'pytest')
+        if not os.path.exists(pytest_path):
+            raise Exception(f'请先配置python虚拟环境,python虚拟环境不存在: {pytest_path}')
         # case报告文件名称预先生成
         report_name = case_path.split('/')[-1].split('.')[0] + '.html'
         json_name = case_path.split('/')[-1].split('.')[0] + '.json'
         xml_name = case_path.split('/')[-1].split('.')[0] + '.xml'
 
         # case报告文件存放路径预先创建
-        report_path = os.path.join(
-            MEDIA_ROOT, 'html-report', str(workspace_id), str(project_id), str(result_id))
+        report_dir = os.path.join(
+            REPORT_ROOT, str(workspace_id), str(testplan_id), str(task_id), str(job_id))
+        report_html_path = os.path.join(report_dir, report_name)
+        report_xml_path = os.path.join(report_dir, xml_name)
+        report_url = os.path.join(REPORT_URL, str(workspace_id), str(testplan_id), str(task_id), str(job_id),
+                                  report_name)
         try:
-            if not os.path.exists(report_path):
-                os.makedirs(report_path)
+            if not os.path.exists(report_dir):
+                os.makedirs(report_dir)
         except FileExistsError:
             pass
 
-        case_key = f"{workspace_id}_{project_id}_{result_id}_{case_path}"
+        case_key = f"{workspace_id}_{project_id}_{testplan_id}_{task_id}_{job_id}_{case_path}"
         # 运行pytest 脚本
         try:
             # 构造case执行指令
-            cmd = '{} {} -vv -s --reruns 1 --reruns-delay 1 --log-cli-level=INFO --html={} --self-contained-html --json-report={} --junit-xml={} --tb=short --env={}'.format(
-                venv_path, case_path, os.path.join(report_path, report_name), os.path.join(report_path, json_name),
-                os.path.join(report_path, xml_name),
-                str(env))
+            cmd = '{} {} -vv -s --reruns 1 --reruns-delay 1 --log-cli-level=INFO --report={} --title={} --desc={} --junit-xml={} --tb=short --env={}'.format(
+                pytest_path, case_path, report_html_path, case_path.split('/')[-1], case_name,
+                report_xml_path, str(env).lower())
             logger.info(f"pytest case开始运行:{case_key}, 执行指令:{cmd}")
 
             # 执行case
             p = subprocess.Popen(
-                cmd, shell=True, stdout=subprocess.PIPE, cwd=git_project_path)
+                cmd, shell=True, stdout=subprocess.PIPE, cwd=git_project_path, stderr=subprocess.PIPE)
+            print("pid", p.pid)
+            _processes.append(p)
 
-            # 等待case完全运行起来 浏览器，chromedriver等资源加载成功
-            time.sleep(8)
-            # 获取父进程的子进程列表
-            child_processes = psutil.Process(p.pid).children(recursive=True)
-            # 遍历子进程列表
-            child_pid_list = []
-            for child in child_processes:
-                # 打印子进程的PID
-                logger.info(f"pid: {p.pid}的子进程的PID: {child.pid}")
-                child_pid_list.append(child.pid)
-
-            out, err = p.communicate()
+            out, err = p.communicate(timeout=60 * 60 * 2)
             read_data = out.decode("utf-8", "ignore")
-            logger.info(f"case:{case_key} 执行结果:{read_data}")
+            error_data = err.decode("utf-8", "ignore")
 
-            # 清理case占用的浏览器资源
-            for child_pid in child_pid_list:
-                terminate_process(child_pid)  # 终止进程
+            # logger.info(f"case:{case_key} 执行结果:{read_data}")
+            logger.info(f"case:{case_key} 执行错误:{error_data}")
 
             # 解析case执行结果
             logger.info(
-                f"case:{case_key} 期望生成xml报告地址:{os.path.join(report_path, xml_name)}")
-            if os.path.exists(os.path.join(report_path, xml_name)):
+                f"case:{case_key} 期望生成xml报告地址:{report_xml_path}")
+            if os.path.exists(report_xml_path):
                 # 存在xml格式的报告文件
                 logger.info(f'case:{case_key} xml报告地址存在')
 
@@ -229,7 +284,7 @@ class PytestCaseRunner:
                 total, passed, failed, error, skipped, successful = 0, 0, 0, 0, 0, 0
 
                 # 解析xml报告 并统计case运行结果（通过率）
-                root = ET.parse(os.path.join(report_path, xml_name))
+                root = ET.parse(os.path.join(report_dir, xml_name))
                 for testcase in root.findall('.//testsuite'):
                     total += int(testcase.get('tests'))
                     error += int(testcase.get('errors'))
@@ -257,29 +312,29 @@ class PytestCaseRunner:
                     "error": 0,
                     "skipped": 0,
                     "successful": 0}
-            report_path_exist = True
             if not os.path.exists(
-                    os.path.join(MEDIA_ROOT, 'html-report', str(workspace_id), str(project_id), str(result_id),
-                                 report_name)):
-                report_path_exist = False
-                db_case_info = PytestCaseModel.objects.filter(workspace_id=workspace_id, case_path=case_path,
-                                                              git_project_id=project_id).first()
-                error_report_url = create_error_html_report_file(workspace_id=workspace_id, project_id=project_id,
-                                                                 git_project_name=db_case_info.git_project_name,
-                                                                 result_id=result_id,
-                                                                 case_type=CaseType.PYTEST,
-                                                                 case_path=case_path, case_name=db_case_info.case_name,
-                                                                 case_level=db_case_info.case_level,
-                                                                 case_author=db_case_info.case_author,
-                                                                 error_info=f"case执行异常,未能生成详细测试报告: {read_data}")
-            case_report_url = REPORT_DOMAIN + os.path.join(MEDIA_URL, 'html-report', str(workspace_id), str(project_id),
-                                                           str(result_id), report_name)
-            return {"case_result": {"case_result": case_result,
-                                    "case_report": case_report_url if report_path_exist else error_report_url}}
-        except SoftTimeLimitExceeded:
-            # case执行超时
-            raise SoftTimeLimitExceeded
+                    os.path.join(report_html_path)):
+                db_case_info = db.query(PytestCaseModel).filter(
+                    PytestCaseModel.case_uuid == case_uuid).first()
+                report_url = create_error_html_report_file(workspace_id=workspace_id,
+                                                           git_project_name=db_case_info.git_project_name,
+                                                           case_type=CaseType.PYTEST,
+                                                           case_path=case_path, case_name=db_case_info.case_name,
+                                                           case_level=db_case_info.case_level,
+                                                           case_author=db_case_info.case_author,
+                                                           report_url=report_url,
+                                                           report_path=report_html_path,
+                                                           result=JobStatus.FAILED,
+                                                           error_info=f"case执行异常,未能生成详细测试报告: {read_data + '\n' + error_data}")
+
+            return {"case_result": case_result,
+                    "case_report": report_url}
+        except FunctionTimedOut as e:
+            logger.error(f"case:{case_key}执行超时: {traceback.format_exc()}")
+            raise e
         except Exception:
             # case执行异常
             logger.error(f"case:{case_key}执行异常: {traceback.format_exc()}")
             raise Exception(traceback.format_exc())
+        finally:
+            cleanup_processes(_processes)

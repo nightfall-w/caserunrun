@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ case_name }} - 测试异常报告</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+  <script>
+    // Tailwind 自定义配置
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            error: '#ef4444',
+            warning: '#f59e0b',
+            primary: '#3b82f6',
+            secondary: '#64748b',
+            neutral: '#f8fafc',
+          },
+          fontFamily: {
+            inter: ['Inter', 'system-ui', 'sans-serif'],
+          },
+          boxShadow: {
+            'card': '0 4px 20px rgba(0, 0, 0, 0.08)',
+            'hover': '0 8px 30px rgba(0, 0, 0, 0.12)',
+          }
+        },
+      }
+    }
+  </script>
+  <style type="text/tailwindcss">
+    @layer utilities {
+      .content-auto {
+        content-visibility: auto;
+      }
+      .bg-gradient-status {
+        @apply bg-gradient-to-r;
+      }
+      .card-transition {
+        @apply transition-all duration-300 ease-in-out;
+      }
+      .text-shadow {
+        text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+      }
+      .scrollbar-slim::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+      }
+      .scrollbar-slim::-webkit-scrollbar-thumb {
+        @apply bg-gray-400 rounded-full;
+      }
+      .scrollbar-slim::-webkit-scrollbar-track {
+        @apply bg-gray-100 rounded-full;
+      }
+      /* 核心布局：确保仅错误区域滚动 */
+      .page-wrapper {
+        min-height: 100vh;
+        padding: 1rem;
+        box-sizing: border-box;
+      }
+      .report-card {
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+      }
+      .details-section {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        min-height: 0; /* 关键：解决flex子元素高度溢出不滚动的问题 */
+      }
+      .error-scroll-container {
+        flex: 1;
+        overflow: auto;
+        min-height: 200px; /* 保底高度，确保小屏也有滚动空间 */
+      }
+    }
+  </style>
+</head>
+<body class="font-inter bg-gray-50 text-gray-800 m-0 p-0">
+  <!-- 顶部异常进度条（动态效果） -->
+  <div class="fixed top-0 left-0 right-0 h-1 z-50">
+    <div class="h-full {{ 'bg-gradient-status from-error to-red-400' if result == 'Failed' else 'bg-gradient-status from-warning to-amber-400' if result == 'Timeout' else 'bg-gradient-status from-error to-orange-400' }} animate-pulse"></div>
+  </div>
+
+  <!-- 页面容器：铺满视口，内部flex布局 -->
+  <div class="page-wrapper container mx-auto max-w-6xl">
+    <!-- 报告卡片：占满高度，垂直flex布局 -->
+    <div class="report-card bg-white rounded-2xl shadow-card card-transition hover:shadow-hover overflow-hidden border-l-4 {{ 'border-error' if result == 'Failed' else 'border-warning' }}">
+      <!-- 头部区域：压缩高度 -->
+      <header class="relative overflow-hidden px-6 py-4 md:py-6">
+        <!-- 异常背景渐变 -->
+        <div class="absolute inset-0 {{ 'bg-gradient-to-br from-red-50 to-pink-50' if result == 'Failed' else 'bg-gradient-to-br from-amber-50 to-yellow-50' }} opacity-70"></div>
+
+        <div class="relative text-center">
+          <h1 class="text-[clamp(1.2rem,3vw,1.8rem)] font-bold text-gray-800 text-shadow mb-2">
+            测试异常报告
+            <span class="text-primary/80 text-sm md:text-base">#{{ workspace_id }}</span>
+          </h1>
+
+          <!-- 异常状态徽章 -->
+          <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full text-base font-semibold text-white
+            {{ 'bg-gradient-status from-error to-red-600' if result == 'Failed' else 'bg-gradient-status from-warning to-amber-600' if result == 'Timeout' else 'bg-gradient-status from-error to-orange-600' }}
+            shadow-lg transform hover:scale-105 transition-all duration-300 mb-2">
+            <i class="fa {{ 'fa-times-circle' if result == 'Failed' else 'fa-clock-o' if result == 'Timeout' else 'fa-exclamation-circle' }}"></i>
+            <span>{{ result }}</span>
+          </div>
+
+          <!-- 用例名称 -->
+          <p class="mt-2 text-base md:text-lg font-medium text-gray-700">
+            {{ case_name }}
+          </p>
+        </div>
+      </header>
+
+      <!-- 概览区域：固定高度 -->
+      <section class="px-6 py-4 border-b border-gray-100">
+        <div class="flex items-center gap-3 mb-3">
+          <div class="w-8 h-8 rounded-full {{ 'bg-error/10 text-error' if result == 'Failed' else 'bg-warning/10 text-warning' }} flex items-center justify-center">
+            <i class="fa fa-exclamation-circle text-lg"></i>
+          </div>
+          <h2 class="text-lg font-bold text-gray-800">异常概览</h2>
+        </div>
+
+        <!-- 响应式网格布局 -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
+          <div class="bg-neutral rounded-xl p-3 card-transition hover:bg-gray-100">
+            <div class="flex items-center gap-2 mb-1">
+              <i class="fa fa-folder-open text-secondary/80 text-sm"></i>
+              <span class="text-xs font-medium text-secondary">用例库ID</span>
+            </div>
+            <p class="text-base font-semibold text-gray-800">{{ workspace_id }}</p>
+          </div>
+
+          <div class="bg-neutral rounded-xl p-3 card-transition hover:bg-gray-100">
+            <div class="flex items-center gap-2 mb-1">
+              <i class="fa fa-tag text-secondary/80 text-sm"></i>
+              <span class="text-xs font-medium text-secondary">用例类型</span>
+            </div>
+            <p class="text-base font-semibold text-gray-800">{{ case_type }}</p>
+          </div>
+
+          <div class="bg-neutral rounded-xl p-3 card-transition hover:bg-gray-100">
+            <div class="flex items-center gap-2 mb-1">
+              <i class="fa fa-github text-secondary/80 text-sm"></i>
+              <span class="text-xs font-medium text-secondary">Git项目</span>
+            </div>
+            <p class="text-base font-semibold text-gray-800">{{ git_project_name }}</p>
+          </div>
+
+          <div class="bg-neutral rounded-xl p-3 card-transition hover:bg-gray-100">
+            <div class="flex items-center gap-2 mb-1">
+              <i class="fa fa-file-code-o text-secondary/80 text-sm"></i>
+              <span class="text-xs font-medium text-secondary">用例路径</span>
+            </div>
+            <p class="text-base font-semibold text-gray-800 break-all">{{ case_path }}</p>
+          </div>
+
+          <div class="bg-neutral rounded-xl p-3 card-transition hover:bg-gray-100">
+            <div class="flex items-center gap-2 mb-1">
+              <i class="fa fa-star text-secondary/80 text-sm"></i>
+              <span class="text-xs font-medium text-secondary">用例等级</span>
+            </div>
+            <p class="text-base font-semibold text-gray-800">S{{ case_level }}</p>
+          </div>
+
+          <div class="bg-neutral rounded-xl p-3 card-transition hover:bg-gray-100">
+            <div class="flex items-center gap-2 mb-1">
+              <i class="fa fa-user text-secondary/80 text-sm"></i>
+              <span class="text-xs font-medium text-secondary">负责人</span>
+            </div>
+            <p class="text-base font-semibold text-gray-800">{{ case_author }}</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- 详细信息区域：占满剩余高度，可滚动 -->
+      <section class="details-section px-6 py-4">
+        <div class="flex items-center gap-3 mb-3">
+          <div class="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center">
+            <i class="fa fa-list-alt text-lg"></i>
+          </div>
+          <h2 class="text-lg font-bold text-gray-800">异常详情</h2>
+        </div>
+
+        {% if error_info %}
+          <!-- 错误信息卡片：独立滚动 -->
+          <div class="bg-red-50 border border-red-100 rounded-xl overflow-hidden card-transition hover:border-red-200 h-full flex flex-col">
+            <div class="bg-error/90 text-white px-4 py-2 flex items-center gap-2">
+              <i class="fa fa-exclamation-triangle"></i>
+              <span class="font-medium text-sm">错误堆栈信息</span>
+            </div>
+            <!-- 核心滚动容器：占满剩余高度 -->
+            <div class="error-scroll-container scrollbar-slim p-4 bg-white">
+              <pre class="text-sm font-mono text-gray-800 bg-gray-50 p-3 rounded-lg whitespace-pre-wrap w-full">{{ error_info }}</pre>
+            </div>
+          </div>
+        {% else %}
+          <!-- 无具体错误信息时的异常提示 -->
+          <div class="bg-neutral rounded-xl p-6 text-center card-transition hover:bg-gray-100 border border-warning/20 flex-grow flex flex-col justify-center">
+            <div class="inline-flex items-center justify-center w-12 h-12 rounded-full {{ 'bg-error/10 text-error' if result == 'Failed' else 'bg-warning/10 text-warning' }} mb-3">
+              <i class="fa {{ 'fa-times-circle' if result == 'Failed' else 'fa-clock-o' if result == 'Timeout' }} text-2xl"></i>
+            </div>
+            <h3 class="text-lg font-semibold text-gray-800 mb-2">测试执行异常（{{ result }}）</h3>
+            <p class="text-secondary text-sm">未捕获到具体错误堆栈信息，但任务执行已异常终止</p>
+            <p class="text-secondary mt-2 text-xs">建议检查任务执行环境、超时配置或依赖资源</p>
+          </div>
+        {% endif %}
+      </section>
+
+      <!-- 页脚区域 -->
+      <footer class="px-6 py-3 bg-gray-50 border-t border-gray-100">
+        <div class="flex flex-col md:flex-row justify-between items-center gap-2">
+          <div class="flex items-center gap-2 text-secondary text-sm">
+            <i class="fa fa-clock-o"></i>
+            <span>异常报告生成时间: {{ datetime.now().strftime('%Y-%m-%d %H:%M:%S') }}</span>
+          </div>
+          <button class="px-4 py-2 rounded-lg {{ 'bg-error/90 text-white hover:bg-error' if result == 'Failed' else 'bg-warning/90 text-white hover:bg-warning' }} transition-colors flex items-center gap-2 card-transition text-sm" onclick="copyReport()">
+            <i class="fa fa-copy"></i>
+            <span>复制异常信息</span>
+          </button>
+        </div>
+      </footer>
+    </div>
+  </div>
+
+  <!-- 复制成功提示 -->
+  <div id="copyToast" class="fixed bottom-6 right-6 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg transform translate-y-20 opacity-0 transition-all duration-300 flex items-center gap-2">
+    <i class="fa fa-check"></i>
+    <span>异常信息复制成功！</span>
+  </div>
+
+  <script>
+    // 复制异常报告内容功能
+    function copyReport() {
+      const reportContent = `
+测试异常报告 - {{ case_name }}
+异常状态: {{ result }}
+用例库ID: {{ workspace_id }}
+用例类型: {{ case_type }}
+Git项目: {{ git_project_name }}
+用例路径: {{ case_path }}
+用例等级: S{{ case_level }}
+负责人: {{ case_author }}
+报告生成时间: {{ datetime.now().strftime('%Y-%m-%d %H:%M:%S') }}
+{% if error_info %}
+错误堆栈信息: {{ error_info }}
+{% else %}
+备注: 未捕获到具体错误堆栈信息，任务执行异常终止
+{% endif %}
+      `.trim();
+
+      navigator.clipboard.writeText(reportContent).then(() => {
+        const toast = document.getElementById('copyToast');
+        toast.classList.remove('translate-y-20', 'opacity-0');
+
+        setTimeout(() => {
+          toast.classList.add('translate-y-20', 'opacity-0');
+        }, 3000);
+      }).catch(err => {
+        alert('复制失败: ' + err);
+      });
+    }
+
+    // 页面加载完成
+    document.addEventListener('DOMContentLoaded', () => {
+      document.body.style.opacity = '1';
+    });
+  </script>
+</body>
+</html>

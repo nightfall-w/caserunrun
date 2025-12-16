@@ -7,7 +7,7 @@
 import argparse
 import datetime
 
-from parser import parse_test_results
+from app.runner.universal_test_report.parser import parse_test_results
 from jinja2 import Environment, FileSystemLoader
 import os
 
@@ -49,4 +49,3 @@ if __name__ == "__main__":
     parser.add_argument('--output', required=True, help='Path to output HTML folder')
     args = parser.parse_args()
     generate_report(args.input, args.output)
-

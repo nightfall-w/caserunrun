@@ -179,7 +179,7 @@
         <el-table-column label="操作" width="220" fixed="right">
           <template #default="scope">
             <div class="operation-buttons">
-              <el-button size="small" type="primary" text @click="handleEdit(scope.row)"
+              <el-button size="small" style="color: darkorange" text @click="handleEdit(scope.row)"
                          class="operation-button">
                 编辑
               </el-button>
@@ -715,9 +715,12 @@
               <div class="selected-case-selector">
                 <!-- 头部操作区 -->
                 <div class="selector-header selected-header">
-                  <div class="selected-count">{{ invalidCases.length }}
+                  <div v-if="invalidCases.length > 0" class="selected-count">{{
+                      invalidCases.length
+                    }}
                     个用例已失效，可能是用例被删除或者用例脚本被移动/重命名/删除
                   </div>
+                  <div v-else class="selected-count">当前测试计划无已失效用例</div>
                   <el-button
                     type="danger"
                     size="small"

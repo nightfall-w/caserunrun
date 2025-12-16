@@ -66,18 +66,3 @@ class CaseSourceRelationModel(Base):
         return (f"<CaseSourceRelationModel(id={self.id}, "
                 f"workspace_id={self.workspace_id}, "
                 f"case_type='{self.case_type}')>")
-
-
-class ParamsTemplateModel(Base):
-    """
-    参数模板模型 返回给wtp前端 用来给wtp前端展示任务、计划参数可选项
-    """
-    __tablename__ = "params_template"
-
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    params_type: Mapped[str] = mapped_column(String(20), nullable=False, comment="参数类型")
-    params_template: Mapped[Dict[str, Any]] = mapped_column(JSON, nullable=False, comment="参数模板")
-
-    def __repr__(self) -> str:
-        return (f"<ParamsTemplateModel(id={self.id}, "
-                f"params_type='{self.params_type}')>")

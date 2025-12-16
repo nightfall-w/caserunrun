@@ -262,7 +262,7 @@ class GitlabAPI(object):
                 logger.debug(f'代码commit拉取输出: {read_data}')
 
             redis_cache_instance.set(cache_key, BranchState.DONE, 3)
-            time.sleep(1.5)
+            time.sleep(1)
             return True, BranchState.DONE, case_project_local_path
         except Exception:
             logger.error(f'cmd: {cmd} 代码拉取失败:{traceback.format_exc()}')

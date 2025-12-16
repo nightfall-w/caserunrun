@@ -369,7 +369,7 @@
     >
       <template #header>
         <div class="drawer-header">
-          <h2 class="drawer-title">创建Python虚拟环境</h2>
+          <h2 class="drawer-title">创建/更新Python虚拟环境</h2>
           <p class="drawer-subtitle">为 "{{ currentPythonCaseSource?.caseProjectName }}"
             配置Python虚拟环境</p>
         </div>

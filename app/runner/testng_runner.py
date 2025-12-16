@@ -163,7 +163,7 @@ class TestNGCaseRunner:
                 case_detail = []
                 db_case_info = TestNGCaseModel.objects.filter(workspace_id=workspace_id, case_path=case_path,
                                                               git_project_id=project_id).first()
-                create_error_html_report_file(workspace_id=workspace_id, project_id=project_id, result_id=result_id,
+                create_error_html_report_file(workspace_id=workspace_id, project_id=project_id,
                                               case_path=case_path, git_project_name=db_case_info.git_project_name,
                                               case_type=CaseType.TESTNG, case_name=db_case_info.case_name,
                                               case_level=db_case_info.case_level,

@@ -8,6 +8,7 @@ from starlette.middleware.cors import CORSMiddleware
 from starlette.staticfiles import StaticFiles
 
 from app.api import router as api_router
+from app.core.config import REPORT_URL, REPORT_ROOT
 from app.core.exception import unified_exception_handler
 from app.core.redis import redis_cache
 
@@ -48,8 +49,8 @@ app.include_router(api_router)
 # 挂载静态目录：将 /media 路由映射到本地 media 文件夹
 # 第一个参数是路由前缀，directory 是本地静态文件目录（相对/绝对路径均可）
 app.mount(
-    "/media",  # 访问前缀：http://localhost:8000/media/xxx.png
-    StaticFiles(directory="media"),  # 本地静态文件目录
+    REPORT_URL,  # 访问前缀：http://localhost:8000/media/xxx.png
+    StaticFiles(directory=REPORT_ROOT),  # 本地静态文件目录
     name="media"  # 路由名称（可选，用于反向生成URL）
 )
 
