@@ -22,6 +22,7 @@ from app.setting.controller import SettingCRUD
 from app.testplan.models import CaseType
 from utils.commonlib import now
 from utils.custom_logging import logger
+from app.testplan.controller import get_test_plan_crud
 
 
 def get_case_model_by_case_type(case_type: str):
@@ -363,6 +364,9 @@ class GitCaseSync:
                 modified_case_list=copy.deepcopy(modified_case_list))
         # 批量更新git_project_commit_id到数据库
         self.batch_update_git_project_commit_id_2_db()
+        test_plan_crud = get_test_plan_crud(db=self.db_session)
+        test_plan_crud.update_workspace_plan_case_status(workspace_id=self.case_source_relation.workspace_id,
+                                                         case_type=self.case_source_relation.case_type)
 
     def sync_case_change_to_db(self, added_case_list=None,
                                removed_case_list=None,
@@ -447,8 +451,7 @@ class GitCaseSync:
                     self.case_model.git_project_id == self.git_project_id
                 )
             ).update({
-                'git_project_commit_id': self.git_project_commit_id,
-                # 'update_time': now()
+                'git_project_commit_id': self.git_project_commit_id
             })
             # 提交事务
             self.db_session.commit()
@@ -457,6 +460,11 @@ class GitCaseSync:
             # 回滚事务
             self.db_session.rollback()
             raise e
+
+    def refresh_testplan_case_status(self):
+        """
+        刷新测试计划中关联的case的状态
+        """
 
 
 @dataclass
@@ -567,6 +575,9 @@ class InitGitCase:
             case_info_dict['case_detail'] = case_content
             added_case_list.append(case_info_dict)
         self.db_session.commit()
+        test_plan_crud = get_test_plan_crud(db=self.db_session)
+        test_plan_crud.update_workspace_plan_case_status(workspace_id=self.case_source_relation.workspace_id,
+                                                         case_type=self.case_source_relation.case_type)
         return added_case_list, removed_case_list, modified_case_list
 
 

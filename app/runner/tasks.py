@@ -3,7 +3,6 @@ from __future__ import absolute_import, unicode_literals
 
 import json
 import os
-import subprocess
 import traceback
 
 from funboost import boost, BoosterParams, BrokerEnum, ConcurrentModeEnum
@@ -11,9 +10,8 @@ from funboost.utils.func_timeout.exceptions import FunctionTimedOut
 from sqlalchemy.orm import Session
 
 from app.case_handler.case_parser import GitCaseParser
-from app.case_handler.case_sync import InitGitCase
+# from app.case_handler.case_sync import InitGitCase
 from app.case_handler.models import PytestCaseModel
-from app.case_source.models import CaseSourceRelationModel
 from app.core.config import REPORT_ROOT, REPORT_URL
 from app.core.database import get_sync_db
 from app.runner.pytest_runner import PytestCaseRunner, create_error_html_report_file
@@ -43,15 +41,6 @@ def ui_json_2_dict(ui_json: str):
         return ui_json
     except Exception:
         return {}
-
-
-def init_case_project(case_source_relation: CaseSourceRelationModel):
-    """
-    :param 用例关系表记录
-    初始化case项目
-    :return:
-    """
-    InitGitCase(case_source_relation=case_source_relation).sync()
 
 
 @boost(MyBoosterParams(

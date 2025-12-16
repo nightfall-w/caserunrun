@@ -4,18 +4,19 @@
 @Author：baojun.wang
 @Time：2025/12/1 17:48
 """
-from typing import List, Tuple, Optional, Any
+from typing import List, Tuple, Optional
+
+from sqlalchemy import func
 from sqlalchemy.orm import Session
-from sqlalchemy import func, ColumnElement
 
 from app.case_handler.case_parser import GitCaseParser
+from app.case_handler.models import PytestCaseModel, TestNGCaseModel
 from app.runner.tasks import pytest_case_task_executor, pytest_case_job_executor
+from app.testplan.models import TestPlanModel, TestPlanPytestCaseModel, TestPlanTestNGCaseModel, CaseType, \
+    TestTaskModel, TaskJobModel, TaskStatus, JobStatus, ExecutionMode
 from app.user.controller import get_nickname_by_username
 from utils.commonlib import now
 from utils.custom_logging import logger
-from app.testplan.models import TestPlanModel, TestPlanPytestCaseModel, TestPlanTestNGCaseModel, CaseType, \
-    TestTaskModel, TaskJobModel, TaskStatus, JobStatus, ExecutionMode
-from app.case_handler.models import PytestCaseModel, TestNGCaseModel
 
 
 class TestPlanCRUD:
@@ -436,6 +437,48 @@ class TestPlanCRUD:
         count = self.get_test_plan_cases_count(test_plan_id)
         test_plan.total_case_count = count
         self.db.commit()
+
+    def update_workspace_plan_case_status(self, workspace_id: int, case_type: str) -> bool:
+        """刷新工作空间中的测试计划数量"""
+        try:
+            if case_type == CaseType.PYTEST:
+                testplan_pytest_cases = self.db.query(TestPlanPytestCaseModel).filter(
+                    TestPlanPytestCaseModel.workspace_id == workspace_id
+                ).all()
+                for testplan_pytest_case in testplan_pytest_cases:
+                    pytest_case = self.db.query(PytestCaseModel).filter(
+                        PytestCaseModel.case_uuid == testplan_pytest_case.case_uuid
+                    ).first()
+                    if pytest_case:
+                        testplan_pytest_case.case_name = pytest_case.case_name
+                        testplan_pytest_case.case_author = pytest_case.case_author
+                        testplan_pytest_case.fk_case_uuid = pytest_case.case_uuid
+                        testplan_pytest_case.is_disabled = False
+                    else:
+                        testplan_pytest_case.fk_case_uuid = None
+                        testplan_pytest_case.is_disabled = False
+            elif case_type == CaseType.TESTNG:
+                testplan_testng_cases = self.db.query(TestPlanTestNGCaseModel).filter(
+                    TestPlanTestNGCaseModel.workspace_id == workspace_id
+                ).all()
+                for testplan_testng_case in testplan_testng_cases:
+                    testng_case = self.db.query(TestNGCaseModel).filter(
+                        TestNGCaseModel.case_uuid == testplan_testng_case.case_uuid
+                    ).first()
+                    if testng_case:
+                        testplan_testng_case.case_name = testng_case.case_name
+                        testplan_testng_case.case_author = testng_case.case_author
+                        testplan_testng_case.fk_case_uuid = testng_case.case_uuid
+                        testplan_testng_case.is_disabled = False
+                    else:
+                        testplan_testng_case.fk_case_uuid = None
+                        testplan_testng_case.is_disabled = False
+            self.db.commit()
+            return True
+        except Exception as e:
+            self.db.rollback()
+            logger.error(f"刷新工作空间测试计划关联的用例状态失败: {e}")
+            return False
 
     def trigger_testplan(self, test_plan_id: int, trigger_user: str) -> bool:
         """触发测试计划"""
