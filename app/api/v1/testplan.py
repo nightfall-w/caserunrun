@@ -19,7 +19,7 @@ from app.testplan.request_models import (
     UpdateTestPlanRequest,
     TestPlanListRequest,
     AddTestCaseRequest,
-    RemoveTestCaseRequest, BatchAddTestCaseRequest, TriggerTestPlanRequest
+    RemoveTestCaseRequest, BatchAddTestCaseRequest, TriggerTestPlanRequest, TestTasksListRequest
 )
 from utils.custom_logging import logger
 
@@ -364,3 +364,19 @@ def trigger_test_plan(request: TriggerTestPlanRequest, db: Session = Depends(get
         logger.error(f"触发测试计划失败: {str(e)}")
         return api_response(code=HttpErrcode.EXCEPTION, message=f"触发失败测试计划失败")
     return api_response(code=HttpErrcode.SUCCESS, message="触发成功")
+
+
+@router.post("/tasks/list")
+def get_test_tasks(request: TestTasksListRequest, db: Session = Depends(get_sync_db)):
+    """
+    查询测试任务列表
+    """
+    crud = get_test_plan_crud(db)
+    try:
+        count, test_tasks = crud.get_test_tasks_with_count(workspace_id=request.workspace_id,
+                                                           test_plan_id=request.test_plan_id, page=request.page_num,
+                                                           size=request.page_size)
+        return api_response(data={"count": count, "test_tasks": test_tasks})
+    except Exception as e:
+        logger.error(f"查询测试任务列表失败: {str(e)}")
+        return api_response(code=HttpErrcode.EXCEPTION, message=f"查询失败", data=None)

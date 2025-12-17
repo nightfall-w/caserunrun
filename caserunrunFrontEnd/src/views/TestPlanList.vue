@@ -2125,7 +2125,7 @@ const handleCaseCurrentChange = (val) => {
 <style scoped>
 /* 全局基础样式 */
 .test-plan-list-container {
-  padding: 5px;
+  padding: 5px 5px 0 5px;
   background-color: #f5f7fa;
   min-height: 100%;
   display: flex;
@@ -2372,7 +2372,7 @@ const handleCaseCurrentChange = (val) => {
 
 /* 分页样式 */
 .pagination-container {
-  padding: 15px 20px;
+  padding: 10px 20px;
   background: white;
   border-top: 1px solid #f1f5f9;
   flex-shrink: 0;

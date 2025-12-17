@@ -4,10 +4,10 @@
 @Author：baojun.wang
 @Time：2025/12/1 17:48
 """
-from typing import List, Tuple, Optional
+from typing import List, Tuple, Optional, Any, cast, Dict
 
 from sqlalchemy import func
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, Query
 
 from app.case_handler.case_parser import GitCaseParser
 from app.case_handler.models import PytestCaseModel, TestNGCaseModel
@@ -437,6 +437,7 @@ class TestPlanCRUD:
         count = self.get_test_plan_cases_count(test_plan_id)
         test_plan.total_case_count = count
         self.db.commit()
+        return True
 
     def update_workspace_plan_case_status(self, workspace_id: int, case_type: str) -> bool:
         """刷新工作空间中的测试计划数量"""
@@ -474,11 +475,94 @@ class TestPlanCRUD:
                         testplan_testng_case.fk_case_uuid = None
                         testplan_testng_case.is_disabled = False
             self.db.commit()
+            # 更新测试计划中的用例数量
+            test_plans = self.db.query(TestPlanModel).filter(TestPlanModel.workspace_id == workspace_id).all()
+            for test_plan in test_plans:
+                self.update_plan_cases_count(test_plan_id=test_plan.id)
             return True
         except Exception as e:
             self.db.rollback()
             logger.error(f"刷新工作空间测试计划关联的用例状态失败: {e}")
             return False
+
+    def get_test_tasks_with_count(
+            self,
+            workspace_id: int,
+            test_plan_id: Optional[int] = None,
+            page: Optional[int] = None,
+            size: Optional[int] = None
+    ) -> Tuple[int, List[Dict[str, Any]]]:
+        """
+        获取指定工作空间下的测试任务（支持筛选测试计划，含总数+计划名称），按创建时间降序排列
+
+        Args:
+            workspace_id: 工作空间ID（必填）
+            test_plan_id: 测试计划ID（可选，为空时查询该工作空间下所有任务）
+            page: 页码（从1开始），为None时返回所有数据
+            size: 每页条数，为None时返回所有数据
+
+        Returns:
+            Tuple[int, List[Dict]]: (总任务数, 任务列表)
+            任务字典包含：TestTaskModel所有字段 + plan_name（测试计划名称）
+        """
+        # 校验必填参数
+        if workspace_id is None or workspace_id <= 0:
+            raise ValueError("workspace_id 必须为正整数")
+
+        # 1. 构建基础查询：多表联查（左连接，保留无关联计划的任务）
+        # 左连接说明：即使任务的test_plan_id无效/为空，也能返回任务（plan_name为None）
+        base_query = self.db.query(
+            TestTaskModel,
+            TestPlanModel.plan_name
+        ).outerjoin(  # 改用outerjoin，兼容test_plan_id为空/无效的场景
+            TestPlanModel,
+            TestTaskModel.test_plan_id == TestPlanModel.id
+        ).filter(
+            # 核心过滤：工作空间ID（两张表都要过滤，避免跨工作空间关联）
+            TestTaskModel.workspace_id == workspace_id,
+            # 计划表的workspace_id过滤（防止不同工作空间有相同ID的测试计划）
+            TestPlanModel.workspace_id == workspace_id if TestPlanModel.workspace_id is not None else True
+        )
+
+        # 2. 可选过滤：测试计划ID
+        if test_plan_id is not None and test_plan_id > 0:
+            base_query = base_query.filter(TestTaskModel.test_plan_id == test_plan_id)
+
+        # 3. 排序：按创建时间降序
+        base_query = base_query.order_by(TestTaskModel.create_time.desc())
+
+        # 4. 查询总条数（性能最优：仅查任务表主键，复用过滤条件）
+        count_query = self.db.query(func.count(TestTaskModel.id)).filter(
+            TestTaskModel.workspace_id == workspace_id
+        )
+        if test_plan_id is not None and test_plan_id > 0:
+            count_query = count_query.filter(TestTaskModel.test_plan_id == test_plan_id)
+        total = cast(int, count_query.scalar() or 0)
+
+        # 5. 处理分页逻辑
+        if page is not None and size is not None:
+            # 参数合法性校验
+            page = max(page, 1)
+            size = max(size, 1)
+            offset = (page - 1) * size
+            base_query = base_query.offset(offset).limit(size)
+
+        # 执行查询
+        query_result = base_query.all()
+
+        # 6. 格式化结果：拼接任务字段 + 计划名称
+        tasks_with_plan_name = []
+        for task, plan_name in query_result:
+            # 将模型实例转为字典（保留所有字段）
+            task_dict = {
+                column.name: getattr(task, column.name)
+                for column in TestTaskModel.__table__.columns
+            }
+            # 新增计划名称字段（兼容None）
+            task_dict["plan_name"] = plan_name or ""  # 空值转为空字符串，避免前端处理None
+            tasks_with_plan_name.append(task_dict)
+
+        return total, tasks_with_plan_name
 
     def trigger_testplan(self, test_plan_id: int, trigger_user: str) -> bool:
         """触发测试计划"""

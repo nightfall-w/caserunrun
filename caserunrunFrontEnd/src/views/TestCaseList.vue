@@ -541,7 +541,7 @@ const searchForm = reactive({
 // 分页参数
 const pagination = reactive({
   page_num: 1,
-  page_size: 10,
+  page_size: 20,
   total: 0
 })
 
@@ -1013,7 +1013,7 @@ const getFileNameFromPath = (path) => {
   text-overflow: ellipsis;
   white-space: nowrap;
   vertical-align: bottom;
-  color: #0a67e1;
+  color: unset;
   font-weight: 400;
   transition: all 0.2s ease;
   padding: 2px 4px;
@@ -1076,7 +1076,7 @@ const getFileNameFromPath = (path) => {
 
 /* 分页样式 */
 .pagination-container {
-  padding: 15px 20px;
+  padding: 10px 20px;
   background: white;
   border-top: 1px solid #f1f5f9;
   flex-shrink: 0;

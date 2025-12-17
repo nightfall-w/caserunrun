@@ -713,7 +713,7 @@ const goToHome = () => {
   flex-direction: column;
   height: 100vh;
   background: #f5f7fa;
-  padding: 5px;
+  padding: 5px 5px 0 5px;
   box-sizing: border-box;
 }
 

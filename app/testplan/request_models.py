@@ -1,6 +1,8 @@
 from pydantic import BaseModel
 from typing import Optional, List
 
+from app.case_source.request_models import PaginationRequestModel
+
 
 class CreateTestPlanRequest(BaseModel):
     """创建测试计划请求"""
@@ -34,11 +36,9 @@ class UpdateTestPlanRequest(BaseModel):
     dingtalk_webhooks: Optional[List[str]] = None
 
 
-class TestPlanListRequest(BaseModel):
+class TestPlanListRequest(PaginationRequestModel):
     """测试计划列表请求"""
     workspace_id: int
-    page_num: int = 1
-    page_size: int = 10
     plan_name: Optional[str] = None
     creator: Optional[str] = None
 
@@ -72,3 +72,9 @@ class BatchAddTestCaseRequest(BaseModel):
 class TriggerTestPlanRequest(BaseModel):
     """触发测试计划请求"""
     test_plan_id: int
+
+
+class TestTasksListRequest(PaginationRequestModel):
+    """测试任务列表请求"""
+    workspace_id: int
+    test_plan_id: Optional[int] = None

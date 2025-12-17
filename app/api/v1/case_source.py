@@ -25,6 +25,7 @@ from app.core.database import get_sync_db
 from app.core.response import HttpErrcode, api_response
 from app.setting.controller import SettingCRUD
 from app.testplan.models import CaseType
+from app.testplan.controller import get_test_plan_crud
 from app.user.request_models import CurrentUser
 from utils.custom_logging import logger
 
@@ -352,6 +353,10 @@ def delete_case_source(request: DeleteCaseSourceRequest, db: Session = Depends(g
         # 删除用例源关系
         session.delete(case_source_relation)
         session.commit()
+
+        testplan_crud = get_test_plan_crud(db=session)
+        testplan_crud.update_workspace_plan_case_status(workspace_id=workspace_id,
+                                                        case_type=case_source_relation.case_type)
         return api_response(code=HttpErrcode.SUCCESS, message="删除成功")
 
 

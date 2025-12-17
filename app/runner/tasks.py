@@ -65,7 +65,7 @@ def pytest_case_task_executor(workspace_id: int, plan_id: int, task_id: int):
         :return:
         """
         for cancel_case_job in to_be_cancelled_job_list:
-            logger.info(f'取消任务: {cancel_case_job}')
+            logger.info(f'取消任务: {cancel_case_job.case_name + "-----" + cancel_case_job.case_uuid}')
             cancel_case_job.job_status = JobStatus.CANCELED
             _db.commit()
 
