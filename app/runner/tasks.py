@@ -48,7 +48,7 @@ def ui_json_2_dict(ui_json: str):
     queue_name='case_task_executor',
     qps=1,
     concurrent_num=50,
-    function_timeout=5
+    function_timeout=60 * 60 * 2
 ))
 def case_task_executor(workspace_id: int, plan_id: int, task_id: int):
     """
