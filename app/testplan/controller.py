@@ -7,11 +7,11 @@
 from typing import List, Tuple, Optional, Any, cast, Dict
 
 from sqlalchemy import func
-from sqlalchemy.orm import Session, Query
+from sqlalchemy.orm import Session
 
 from app.case_handler.case_parser import GitCaseParser
 from app.case_handler.models import PytestCaseModel, TestNGCaseModel
-from app.runner.tasks import pytest_case_task_executor, pytest_case_job_executor, testng_case_job_executor
+from app.runner.tasks import case_task_executor, pytest_case_job_executor, testng_case_job_executor
 from app.testplan.models import TestPlanModel, TestPlanPytestCaseModel, TestPlanTestNGCaseModel, CaseType, \
     TestTaskModel, TaskJobModel, TaskStatus, JobStatus, ExecutionMode
 from app.user.controller import get_nickname_by_username
@@ -626,7 +626,7 @@ class TestPlanCRUD:
             self.db.commit()
 
         if task.task_execution_mode == ExecutionMode.SERIAL:
-            pytest_case_task_executor.push(
+            case_task_executor.push(
                 task_id=task_id,
                 workspace_id=test_plan.workspace_id,
                 plan_id=test_plan_id,

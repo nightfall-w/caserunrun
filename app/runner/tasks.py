@@ -10,6 +10,7 @@ from funboost.utils.func_timeout.exceptions import FunctionTimedOut
 from sqlalchemy.orm import Session
 
 from app.case_handler.case_parser import GitCaseParser
+from app.case_handler.case_sync import get_case_model_by_case_type
 from app.case_handler.models import PytestCaseModel, TestNGCaseModel
 from app.core.config import REPORT_ROOT, REPORT_URL
 from app.core.database import get_sync_db
@@ -44,12 +45,12 @@ def ui_json_2_dict(ui_json: str):
 
 
 @boost(MyBoosterParams(
-    queue_name='pytest_case_task_executor',
+    queue_name='case_task_executor',
     qps=1,
     concurrent_num=50,
     function_timeout=5
 ))
-def pytest_case_task_executor(workspace_id: int, plan_id: int, task_id: int):
+def case_task_executor(workspace_id: int, plan_id: int, task_id: int):
     """
     【case计划串行执行器】
     :param workspace_id: wtp用例库id
@@ -87,18 +88,40 @@ def pytest_case_task_executor(workspace_id: int, plan_id: int, task_id: int):
         case_extra_info = GitCaseParser.parse_case_uuid(case_uuid=case_job.case_uuid)
         case_job.job_status = JobStatus.RUNNING
         db.commit()
+
+        case_model = get_case_model_by_case_type(case_type=case_job.case_type)
+
         try:
-            case_execute_result = PytestCaseRunner.executor(
-                testplan_id=case_task.test_plan_id,
-                task_id=task_id, job_id=case_job.id,
-                workspace_id=workspace_id,
-                case_path=case_job.case_path,
-                case_name=case_job.case_name,
-                project_id=case_extra_info["git_project_id"],
-                env=case_task.test_environment,
-                branch_name=case_extra_info["branch_name"],
-                case_uuid=case_job.case_uuid
-            )
+            if case_job.case_type == CaseType.PYTEST:
+                # 获取pytest用例信息
+                case_execute_result = PytestCaseRunner.executor(
+                    testplan_id=case_task.test_plan_id,
+                    task_id=task_id, job_id=case_job.id,
+                    workspace_id=workspace_id,
+                    case_path=case_job.case_path,
+                    case_name=case_job.case_name,
+                    project_id=case_extra_info["git_project_id"],
+                    env=case_task.test_environment,
+                    branch_name=case_extra_info["branch_name"],
+                    case_uuid=case_job.case_uuid
+                )
+            elif case_job.case_type == CaseType.TESTNG:
+                # 获取testng用例信息
+                case_execute_result = TestNGCaseRunner.executor(
+                    testplan_id=case_task.test_plan_id,
+                    task_id=task_id, job_id=case_job.id,
+                    workspace_id=workspace_id,
+                    case_path=case_job.case_path,
+                    case_name=case_job.case_name,
+                    case_package=case_job.case_package,
+                    project_id=case_extra_info["git_project_id"],
+                    env=case_task.test_environment,
+                    branch_name=case_extra_info["branch_name"],
+                    case_uuid=case_job.case_uuid
+                )
+            else:
+                raise Exception(f'不支持的case类型: {case_job.case_type}')
+
             logger.info(f'{case_job.case_name} 执行结果: {case_execute_result}')
 
             # 判断case执行结果
@@ -130,8 +153,8 @@ def pytest_case_task_executor(workspace_id: int, plan_id: int, task_id: int):
             db.commit()
             logger.error(
                 f'job状态{case_job.job_status}')
-            db_case_info = db.query(PytestCaseModel).filter(
-                PytestCaseModel.case_uuid == case_job.case_uuid).first()
+            db_case_info = db.query(case_model).filter(
+                case_model.case_uuid == case_job.case_uuid).first()
 
             report_name = case_job.case_path.split('/')[-1].split('.')[0] + '.html'
             report_dir = os.path.join(
@@ -159,8 +182,8 @@ def pytest_case_task_executor(workspace_id: int, plan_id: int, task_id: int):
             # case执行异常
             logger.error(f'{case_job.case_name} 执行异常: {traceback.format_exc()}')
             case_job.job_status = JobStatus.FAILED
-            db_case_info = db.query(PytestCaseModel).filter(
-                PytestCaseModel.case_uuid == case_job.case_uuid).first()
+            db_case_info = db.query(case_model).filter(
+                case_model.case_uuid == case_job.case_uuid).first()
 
             report_name = case_job.case_path.split('/')[-1].split('.')[0] + '.html'
             report_dir = os.path.join(
