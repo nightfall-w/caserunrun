@@ -19,6 +19,7 @@ from app.case_source.models import CaseSourceRelationModel
 from app.core.config import REPORT_URL, REPORT_ROOT
 from app.core.database import get_sync_db
 from app.runner.pytest_runner import sync_last_git_project_to_local, create_error_html_report_file, cleanup_processes
+from app.runner.universal_test_report.generate_report import generate_report
 from app.testplan.models import CaseType, JobStatus
 from app.virtual_env.models import JavaEnvModel
 from utils.custom_logging import logger
@@ -154,6 +155,8 @@ class TestNGCaseRunner:
                          "start_time": start_time, "end_time": end_time,
                          "result": result, "case_msg": case_msg}
                     )
+                # 生成html报告文件
+                generate_report(xml_dir=report_dir, output_dir=report_dir)
             else:
                 # 不存在xml格式的报告文件
                 logger.info(f'case:{case_key} xml报告地址不存在')
@@ -168,6 +171,7 @@ class TestNGCaseRunner:
 
                 db_case_info = db.query(TestNGCaseModel).filter(
                     TestNGCaseModel.case_uuid == case_uuid).first()
+                reports_directory = '<reportsDirectory>${reportsDirectory}</reportsDirectory>'
                 report_url = create_error_html_report_file(workspace_id=workspace_id,
                                                            case_path=case_path,
                                                            git_project_name=db_case_info.git_project_name,
@@ -177,7 +181,7 @@ class TestNGCaseRunner:
                                                            result=JobStatus.FAILED,
                                                            report_url=report_url,
                                                            report_path=report_html_path,
-                                                           error_info=f"case运行异常，未能生成详细测试报告: {read_data}")
+                                                           error_info=f"case运行异常，未能生成详细测试报告,请检查pox.xml中的maven-surefire-plugin中configuration中是否配置了{reports_directory},这是必须的，用于生成测试报告")
             return {"case_result": case_result, "case_report": report_url}
         except FunctionTimedOut as e:
             logger.error(f"case:{case_key}执行超时: {traceback.format_exc()}")

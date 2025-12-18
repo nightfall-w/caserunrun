@@ -27,7 +27,7 @@ def generate_report(xml_dir, output_dir):
         None
     """
     # 解析XML测试结果并添加生成时间戳
-    results = parse_test_results(xml_dir)
+    results, file_name = parse_test_results(xml_dir)
     results['generated_time'] = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
     # 使用Jinja2模板引擎加载并渲染报告模板
@@ -37,9 +37,10 @@ def generate_report(xml_dir, output_dir):
 
     # 创建输出目录并写入HTML报告文件
     os.makedirs(output_dir, exist_ok=True)
-    with open(os.path.join(output_dir, 'index.html'), 'w', encoding='utf-8') as f:
+    report_name = f'{file_name}.html'
+    with open(os.path.join(output_dir, report_name), 'w', encoding='utf-8') as f:
         f.write(html_content)
-    print(f"✅ Report generated at {os.path.join(output_dir, 'index.html')}")
+    print(f"✅ Report generated at {os.path.join(output_dir, report_name)}")
 
 
 if __name__ == "__main__":
