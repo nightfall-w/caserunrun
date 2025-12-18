@@ -6,22 +6,22 @@
 """
 import os
 import subprocess
-import time
 import traceback
 import xml.etree.ElementTree as ET
 from datetime import datetime
 
-import psutil
 import pytz
-from celery.exceptions import SoftTimeLimitExceeded
+from funboost.utils.func_timeout.exceptions import FunctionTimedOut
 
 from app.case_handler.case_parser import GitCaseParser
 from app.case_handler.models import TestNGCaseModel
-from app.runner.pytest_runner import sync_last_git_project_to_local, terminate_process, create_error_html_report_file
+from app.case_source.models import CaseSourceRelationModel
+from app.core.config import REPORT_URL, REPORT_ROOT
+from app.core.database import get_sync_db
+from app.runner.pytest_runner import sync_last_git_project_to_local, create_error_html_report_file, cleanup_processes
+from app.testplan.models import CaseType, JobStatus
+from app.virtual_env.models import JavaEnvModel
 from utils.custom_logging import logger
-from app.core.config import MEDIA_ROOT, REPORT_URL
-
-from app.testplan.models import CaseType
 
 
 class TestNGCaseRunner:
@@ -32,81 +32,81 @@ class TestNGCaseRunner:
     """
 
     @classmethod
-    def executor(cls, workspace_id: int, case_path: str, case_package: str, project_id: int, result_id: int, env: int,
-                 commit_id: str, branch_name="master"):
+    def executor(cls, testplan_id: int, task_id: int, job_id: int, workspace_id: int, case_path: str, case_name: str,
+                 case_package: str, project_id: int, case_uuid: str, env: int, branch_name):
         """
         执行TestNG类型的测试用例，并返回执行结果和日志信息。
 
-        :param workspace_id: 用例库ID，用于标识测试用例所属的用例库
-        :param case_path: 测试用例文件路径（相对于项目根目录）
-        :param case_package: 测试用例模块名，用于指定Maven执行的测试类
-        :param project_id: 项目ID，用于标识测试用例所属的Git项目
-        :param result_id: 测试结果唯一标识，用于生成报告路径
-        :param env: 执行环境标识，用于传递给测试用例运行时环境参数
-        :param commit_id: Git提交ID，用于拉取指定版本的代码
-        :param branch_name: Git分支名称，默认为master，用于拉取指定分支代码
+        :param testplan_id: 任务计划id
+        :param task_id: 任务id
+        :param job_id: 工作id
+        :param workspace_id: 用例库id
+        :param case_path: case脚本路径
+        :param case_package: case包
+        :param case_uuid: case uuid
+        :param case_name: case脚本名称
+        :param project_id: 项目id
+        :param env: 执行环境
+        :param branch_name: 分支名称
         :return: dict，包含测试结果统计信息、详细执行信息和报告地址
         """
-
+        _processes = []  # 进程列表
+        
         # 同步Git项目到本地指定commit_id版本
         git_project_path = sync_last_git_project_to_local(workspace_id=workspace_id, project_id=project_id,
-                                                          case_path=case_path,
-                                                          branch_name=branch_name, commit_id=commit_id)
+                                                          case_path=case_path, branch_name=branch_name)
 
-        mvn = 'mvn'  # maven命令的路径
-        # case报告文件名称预先生成
+        # 获取python虚拟环境与解释器路径
+        db = next(get_sync_db())
+        venv_id = db.query(CaseSourceRelationModel).filter(CaseSourceRelationModel.workspace_id == workspace_id,
+                                                           CaseSourceRelationModel.case_source_value[
+                                                               "projectId"] == project_id).first().venv_id
+        venv_info = db.query(JavaEnvModel).filter(JavaEnvModel.id == venv_id).first()
+
+        if not venv_info or not venv_info.maven_setting_path:
+            raise Exception(f'请先配置用例源的Java虚拟环境,venv_id-{project_id}不存在')
+
+        mvn = venv_info.venv_path
         xml_name = 'testng-results.xml'
+        report_name = case_path.split('/')[-1].split('.')[0] + '.html'
 
         # case报告文件存放路径预先创建
-        report_path = os.path.join(
-            MEDIA_ROOT, 'html-report', str(workspace_id), str(project_id), str(result_id))
+        report_dir = os.path.join(
+            REPORT_ROOT, str(workspace_id), str(testplan_id), str(task_id), str(job_id))
+        report_html_path = os.path.join(report_dir, report_name)
+        report_xml_path = os.path.join(report_dir, xml_name)
+        report_url = os.path.join(REPORT_URL, str(workspace_id), str(testplan_id), str(task_id), str(job_id),
+                                  report_name)
+
         try:
-            if not os.path.exists(report_path):
-                os.makedirs(report_path)
+            if not os.path.exists(report_dir):
+                os.makedirs(report_dir)
         except FileExistsError:
             pass
 
-        case_key = f"{workspace_id}_{project_id}_{result_id}_{case_path}"
+        case_key = f"{workspace_id}_{project_id}_{testplan_id}_{task_id}_{job_id}_{case_path}"
         try:
             # 构造case执行指令
-            cmd = f'{mvn} test -Dtest={case_package} -DreportsDirectory={report_path} -Denv={env}'
+            cmd = f'{mvn} test -Dtest={case_package} -DreportsDirectory={report_dir} -Denv={env}'
             logger.info(f"testng case开始运行:{case_key}, 执行指令:{cmd}")
 
             # 开始执行case
             p = subprocess.Popen(
                 cmd, shell=True, stdout=subprocess.PIPE, cwd=git_project_path)
 
-            # 等待case完全运行起来 浏览器，chromedriver等资源加载成功
-            time.sleep(8)
-            # 获取父进程的子进程列表
-            child_processes = psutil.Process(p.pid).children(recursive=True)
-            # 遍历子进程列表
-            child_pid_list = []
-            for child in child_processes:
-                # 打印子进程的PID
-                logger.info(f"pid: {p.pid}的子进程的PID: {child.pid}")
-                child_pid_list.append(child.pid)
-
             out, err = p.communicate()
             read_data = out.decode("utf-8", "ignore")
             logger.info(f"case:{case_key} 执行结果:{read_data}")
 
-            # 清理case占用的浏览器资源
-            for child_pid in child_pid_list:
-                terminate_process(child_pid)
-
             # 解析case执行结果
             logger.info(
-                f"case:{case_key} 期望生成xml报告地址:{os.path.join(report_path, xml_name)}")
-            if os.path.exists(os.path.join(report_path, xml_name)):
+                f"case:{case_key} 期望生成xml报告地址:{report_xml_path}")
+            if os.path.exists(os.path.join(report_xml_path)):
                 # 存在xml格式的报告文件
                 logger.info(f'case:{case_key} xml报告地址存在')
 
-                # 设定默认值
-                total, passed, failed, skipped, successful = 0, 0, 0, 0, 0
-
                 # 解析xml报告 并统计case运行结果（通过率）
-                root = ET.parse(os.path.join(report_path, xml_name))
+                root = ET.parse(os.path.join(report_xml_path))
                 root = root.getroot()
 
                 # 提取total、passed、skipped属性值
@@ -163,22 +163,23 @@ class TestNGCaseRunner:
                 case_detail = []
                 db_case_info = TestNGCaseModel.objects.filter(workspace_id=workspace_id, case_path=case_path,
                                                               git_project_id=project_id).first()
-                create_error_html_report_file(workspace_id=workspace_id, project_id=project_id,
-                                              case_path=case_path, git_project_name=db_case_info.git_project_name,
-                                              case_type=CaseType.TESTNG, case_name=db_case_info.case_name,
-                                              case_level=db_case_info.case_level,
-                                              case_author=db_case_info.case_author,
-                                              error_info=f"case运行异常，未能生成详细测试报告: {read_data}")
-            return {"case_result": {"case_result": case_result, "case_detail": case_detail,
-                                    "case_report": REPORT_DOMAIN + os.path.join(
-                                        MEDIA_URL, 'html-report', str(workspace_id), str(project_id), str(result_id),
-                                        'error.html' if os.path.exists(
-                                            os.path.join(report_path, 'error.html')) else xml_name)},
-                    "case_log": read_data}
-        except SoftTimeLimitExceeded:
-            # case执行超时
-            raise SoftTimeLimitExceeded
+                report_url = create_error_html_report_file(workspace_id=workspace_id,
+                                                           case_path=case_path,
+                                                           git_project_name=db_case_info.git_project_name,
+                                                           case_type=CaseType.TESTNG, case_name=db_case_info.case_name,
+                                                           case_level=db_case_info.case_level,
+                                                           case_author=db_case_info.case_author,
+                                                           result=JobStatus.FAILED,
+                                                           report_url=report_url,
+                                                           report_path=report_html_path,
+                                                           error_info=f"case运行异常，未能生成详细测试报告: {read_data}")
+            return {"case_result": case_result, "case_report": report_url}
+        except FunctionTimedOut as e:
+            logger.error(f"case:{case_key}执行超时: {traceback.format_exc()}")
+            raise e
         except Exception:
             # case执行异常
             logger.error(f"case:{case_key}执行异常: {traceback.format_exc()}")
             raise Exception(traceback.format_exc())
+        finally:
+            cleanup_processes(_processes)

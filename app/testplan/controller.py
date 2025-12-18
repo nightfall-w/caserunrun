@@ -512,16 +512,10 @@ class TestPlanCRUD:
         # 1. 构建基础查询：多表联查（左连接，保留无关联计划的任务）
         # 左连接说明：即使任务的test_plan_id无效/为空，也能返回任务（plan_name为None）
         base_query = self.db.query(
-            TestTaskModel,
-            TestPlanModel.plan_name
-        ).outerjoin(  # 改用outerjoin，兼容test_plan_id为空/无效的场景
-            TestPlanModel,
-            TestTaskModel.test_plan_id == TestPlanModel.id
+            TestTaskModel
         ).filter(
             # 核心过滤：工作空间ID（两张表都要过滤，避免跨工作空间关联）
-            TestTaskModel.workspace_id == workspace_id,
-            # 计划表的workspace_id过滤（防止不同工作空间有相同ID的测试计划）
-            TestPlanModel.workspace_id == workspace_id if TestPlanModel.workspace_id is not None else True
+            TestTaskModel.workspace_id == workspace_id
         )
 
         # 2. 可选过滤：测试计划ID
@@ -551,18 +545,16 @@ class TestPlanCRUD:
         query_result = base_query.all()
 
         # 6. 格式化结果：拼接任务字段 + 计划名称
-        tasks_with_plan_name = []
-        for task, plan_name in query_result:
+        tasks = []
+        for task in query_result:
             # 将模型实例转为字典（保留所有字段）
             task_dict = {
                 column.name: getattr(task, column.name)
                 for column in TestTaskModel.__table__.columns
             }
-            # 新增计划名称字段（兼容None）
-            task_dict["plan_name"] = plan_name or ""  # 空值转为空字符串，避免前端处理None
-            tasks_with_plan_name.append(task_dict)
+            tasks.append(task_dict)
 
-        return total, tasks_with_plan_name
+        return total, tasks
 
     def trigger_testplan(self, test_plan_id: int, trigger_user: str) -> bool:
         """触发测试计划"""
@@ -599,6 +591,7 @@ class TestPlanCRUD:
         # 创建测试任务task
         task = TestTaskModel(workspace_id=test_plan.workspace_id,
                              test_plan_id=test_plan_id,
+                             task_name=test_plan.plan_name,
                              fail_stop=test_plan.fail_stop,
                              task_execution_mode=test_plan.execution_mode,
                              test_environment=test_plan.test_environment,
@@ -622,6 +615,7 @@ class TestPlanCRUD:
                                case_function_list=case.case_function_list,
                                job_status=JobStatus.PENDING,
                                case_path=case.case_path,
+                               case_package=case.case_package,
                                create_time=now(),
                                update_time=now(),
                                time_consuming=0

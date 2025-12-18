@@ -200,8 +200,7 @@ class PytestCaseRunner:
 
     @classmethod
     def executor(cls, testplan_id: int, task_id: int, job_id: int, workspace_id: int, case_path: str, case_name: str,
-                 project_id: int, case_uuid: str,
-                 env: int, branch_name):
+                 project_id: int, case_uuid: str, env: int, branch_name):
         """
         执行器
         :param testplan_id: 任务计划id
@@ -228,14 +227,13 @@ class PytestCaseRunner:
                                                                "projectId"] == project_id).first().venv_id
         venv_info = db.query(PythonVirtualEnvModel).filter(PythonVirtualEnvModel.id == venv_id).first()
         if not venv_info:
-            raise Exception(f'请先配置python虚拟环境,venv_id-{project_id}不存在')
+            raise Exception(f'请先配置用例源的python虚拟环境,venv_id-{project_id}不存在')
         venv_path = venv_info.path
         pytest_path = os.path.join(venv_path, 'bin', 'pytest')
         if not os.path.exists(pytest_path):
             raise Exception(f'请先配置python虚拟环境,python虚拟环境不存在: {pytest_path}')
         # case报告文件名称预先生成
         report_name = case_path.split('/')[-1].split('.')[0] + '.html'
-        json_name = case_path.split('/')[-1].split('.')[0] + '.json'
         xml_name = case_path.split('/')[-1].split('.')[0] + '.xml'
 
         # case报告文件存放路径预先创建
@@ -327,8 +325,7 @@ class PytestCaseRunner:
                                                            result=JobStatus.FAILED,
                                                            error_info=f"case执行异常,未能生成详细测试报告: {read_data + '\n' + error_data}")
 
-            return {"case_result": case_result,
-                    "case_report": report_url}
+            return {"case_result": case_result, "case_report": report_url}
         except FunctionTimedOut as e:
             logger.error(f"case:{case_key}执行超时: {traceback.format_exc()}")
             raise e
