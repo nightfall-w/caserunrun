@@ -31,7 +31,7 @@ def generate_report(xml_dir: str, report_html_path: str):
     results['generated_time'] = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
     # 使用Jinja2模板引擎加载并渲染报告模板
-    env = Environment(loader=FileSystemLoader('templates'))
+    env = Environment(loader=FileSystemLoader(os.path.join(os.path.dirname(__file__), 'templates')))
     template = env.get_template('report_template.html')
     html_content = template.render(results=results)
 
