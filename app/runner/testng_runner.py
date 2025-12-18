@@ -94,9 +94,14 @@ class TestNGCaseRunner:
             p = subprocess.Popen(
                 cmd, shell=True, stdout=subprocess.PIPE, cwd=git_project_path)
 
-            out, err = p.communicate()
+            _processes.append(p)
+
+            out, err = p.communicate(timeout=60 * 60 * 2)
             read_data = out.decode("utf-8", "ignore")
-            logger.info(f"case:{case_key} 执行结果:{read_data}")
+            error_data = err.decode("utf-8", "ignore")
+
+            # logger.info(f"case:{case_key} 执行结果:{read_data}")
+            logger.info(f"case:{case_key} 执行错误:{error_data}")
 
             # 解析case执行结果
             logger.info(
@@ -160,9 +165,9 @@ class TestNGCaseRunner:
                     "skipped": 0,
                     "ignored": 0,
                     "successful": 0}
-                case_detail = []
-                db_case_info = TestNGCaseModel.objects.filter(workspace_id=workspace_id, case_path=case_path,
-                                                              git_project_id=project_id).first()
+
+                db_case_info = db.query(TestNGCaseModel).filter(
+                    TestNGCaseModel.case_uuid == case_uuid).first()
                 report_url = create_error_html_report_file(workspace_id=workspace_id,
                                                            case_path=case_path,
                                                            git_project_name=db_case_info.git_project_name,
