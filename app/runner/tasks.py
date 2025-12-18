@@ -10,7 +10,7 @@ from funboost.utils.func_timeout.exceptions import FunctionTimedOut
 from sqlalchemy.orm import Session
 
 from app.case_handler.case_parser import GitCaseParser
-from app.case_handler.case_sync import get_case_model_by_case_type
+
 from app.case_handler.models import PytestCaseModel, TestNGCaseModel
 from app.core.config import REPORT_ROOT, REPORT_URL
 from app.core.database import get_sync_db
@@ -88,7 +88,7 @@ def case_task_executor(workspace_id: int, plan_id: int, task_id: int):
         case_extra_info = GitCaseParser.parse_case_uuid(case_uuid=case_job.case_uuid)
         case_job.job_status = JobStatus.RUNNING
         db.commit()
-
+        from app.case_handler.case_sync import get_case_model_by_case_type
         case_model = get_case_model_by_case_type(case_type=case_job.case_type)
 
         try:
