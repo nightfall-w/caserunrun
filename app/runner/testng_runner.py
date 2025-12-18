@@ -51,7 +51,7 @@ class TestNGCaseRunner:
         :return: dict，包含测试结果统计信息、详细执行信息和报告地址
         """
         _processes = []  # 进程列表
-        
+
         # 同步Git项目到本地指定commit_id版本
         git_project_path = sync_last_git_project_to_local(workspace_id=workspace_id, project_id=project_id,
                                                           case_path=case_path, branch_name=branch_name)
@@ -66,7 +66,7 @@ class TestNGCaseRunner:
         if not venv_info or not venv_info.maven_setting_path:
             raise Exception(f'请先配置用例源的Java虚拟环境,venv_id-{project_id}不存在')
 
-        mvn = venv_info.venv_path
+        mvn = "mvn"
         xml_name = 'testng-results.xml'
         report_name = case_path.split('/')[-1].split('.')[0] + '.html'
 
