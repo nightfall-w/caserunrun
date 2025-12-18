@@ -12,7 +12,7 @@ from jinja2 import Environment, FileSystemLoader
 import os
 
 
-def generate_report(xml_dir: str, report_html_path: str):
+def generate_report(xml_dir: str, report_html_path: str, description: str = ""):
     """
     生成HTML测试报告
 

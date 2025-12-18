@@ -420,8 +420,9 @@
   <!-- 报告头部 -->
   <header>
     <div class="header-content">
-      <h1>🧪 通用测试报告</h1>
-      <p>一致、美观且可复用的测试报告模板 — 关键信息一目了然</p>
+        <h1>🧪 {{ results.title if results.title+"测试报告" else '测试报告' }}</h1>
+        <p>{{ results.desc if results.desc else '一致、美观且可复用的测试报告模板 — 关键信息一目了然，用例支持展开查看详情' }}
+        </p>
     </div>
   </header>
 
