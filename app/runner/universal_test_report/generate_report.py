@@ -32,7 +32,7 @@ def generate_report(xml_dir: str, report_html_path: str):
 
     # 使用Jinja2模板引擎加载并渲染报告模板
     env = Environment(loader=FileSystemLoader('templates'))
-    template = env.get_template('templates/report_template.html')
+    template = env.get_template('report_template.html')
     html_content = template.render(results=results)
 
     # 创建输出目录并写入HTML报告文件
