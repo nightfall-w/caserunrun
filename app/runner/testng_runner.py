@@ -92,8 +92,8 @@ class TestNGCaseRunner:
 
             # 开始执行case
             p = subprocess.Popen(
-                cmd, shell=True, stdout=subprocess.PIPE, cwd=git_project_path)
-
+                cmd, shell=True, stdout=subprocess.PIPE, cwd=git_project_path, stderr=subprocess.PIPE)
+            print("pid", p.pid)
             _processes.append(p)
 
             out, err = p.communicate(timeout=60 * 60 * 2)
