@@ -12,7 +12,7 @@ from jinja2 import Environment, FileSystemLoader
 import os
 
 
-def generate_report(xml_dir, output_dir):
+def generate_report(xml_dir: str, report_html_path: str):
     """
     生成HTML测试报告
 
@@ -36,11 +36,11 @@ def generate_report(xml_dir, output_dir):
     html_content = template.render(results=results)
 
     # 创建输出目录并写入HTML报告文件
-    os.makedirs(output_dir, exist_ok=True)
-    report_name = f'{file_name}.html'
-    with open(os.path.join(output_dir, report_name), 'w', encoding='utf-8') as f:
+    os.makedirs(os.path.dirname(report_html_path), exist_ok=True)
+    with open(report_html_path, 'w', encoding='utf-8') as f:
         f.write(html_content)
-    print(f"✅ Report generated at {os.path.join(output_dir, report_name)}")
+    print(f"✅ Report generated at {report_html_path}")
+    return True
 
 
 if __name__ == "__main__":

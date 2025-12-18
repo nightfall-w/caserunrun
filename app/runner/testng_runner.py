@@ -156,7 +156,7 @@ class TestNGCaseRunner:
                          "result": result, "case_msg": case_msg}
                     )
                 # 生成html报告文件
-                generate_report(xml_dir=report_dir, output_dir=report_dir)
+                generate_report(xml_dir=report_dir, report_html_path=report_html_path)
             else:
                 # 不存在xml格式的报告文件
                 logger.info(f'case:{case_key} xml报告地址不存在')
