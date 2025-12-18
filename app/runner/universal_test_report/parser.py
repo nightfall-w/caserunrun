@@ -49,7 +49,6 @@ def parse_test_results(xml_dir):
     # 第一步：解析TEST-*.xml文件，获取基础信息
     for file in os.listdir(xml_dir):
         if file.startswith('TEST-') and file.endswith('.xml'):
-            file_name = file.replace('.xml', '')
             tree = ET.parse(os.path.join(xml_dir, file))
             root = tree.getroot()
 
@@ -151,4 +150,4 @@ def parse_test_results(xml_dir):
                         if testng_logs:
                             case_info['testng_log'] = '\n'.join(testng_logs)
 
-    return summary, file_name
+    return summary

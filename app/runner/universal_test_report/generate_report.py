@@ -27,12 +27,14 @@ def generate_report(xml_dir: str, report_html_path: str, description: str = ""):
         None
     """
     # 解析XML测试结果并添加生成时间戳
-    results, file_name = parse_test_results(xml_dir)
+    results = parse_test_results(xml_dir)
     results['generated_time'] = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
     # 使用Jinja2模板引擎加载并渲染报告模板
     env = Environment(loader=FileSystemLoader(os.path.join(os.path.dirname(__file__), 'templates')))
     template = env.get_template('report_template.html')
+    results['desc'] = description
+    results['title'] = os.path.basename(report_html_path)
     html_content = template.render(results=results)
 
     # 创建输出目录并写入HTML报告文件
