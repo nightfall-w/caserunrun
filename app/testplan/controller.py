@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session, Query
 
 from app.case_handler.case_parser import GitCaseParser
 from app.case_handler.models import PytestCaseModel, TestNGCaseModel
-from app.runner.tasks import pytest_case_task_executor, pytest_case_job_executor
+from app.runner.tasks import pytest_case_task_executor, pytest_case_job_executor, testng_case_job_executor
 from app.testplan.models import TestPlanModel, TestPlanPytestCaseModel, TestPlanTestNGCaseModel, CaseType, \
     TestTaskModel, TaskJobModel, TaskStatus, JobStatus, ExecutionMode
 from app.user.controller import get_nickname_by_username
@@ -636,12 +636,20 @@ class TestPlanCRUD:
                 TaskJobModel.task_id == task_id
             )
             for case_job in case_jobs:
-                pytest_case_job_executor.push(
-                    task_id=task_id,
-                    workspace_id=test_plan.workspace_id,
-                    plan_id=test_plan_id,
-                    job_id=case_job.id
-                )
+                if case_job.case_type == CaseType.PYTEST:
+                    pytest_case_job_executor.push(
+                        task_id=task_id,
+                        workspace_id=test_plan.workspace_id,
+                        plan_id=test_plan_id,
+                        job_id=case_job.id
+                    )
+                elif case_job.case_type == CaseType.TESTNG:
+                    testng_case_job_executor.push(
+                        task_id=task_id,
+                        workspace_id=test_plan.workspace_id,
+                        plan_id=test_plan_id,
+                        job_id=case_job.id
+                    )
 
 
 def get_test_plan_crud(db: Session) -> TestPlanCRUD:
