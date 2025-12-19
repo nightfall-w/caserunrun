@@ -253,7 +253,7 @@ class GitCaseParser:
         if case_path.endswith('.py'):
             return case_path.replace('/', '.').replace('.py', '')
         elif case_path.endswith('.java'):
-            return case_path.split('/')[-1].replace('.java', '')
+            return case_path.replace('src/test/java/', '').replace('/', '.').replace('.java', '')
 
     def find_python_test_files(self, directory, case_dir='', include_project_name=False):
         """
