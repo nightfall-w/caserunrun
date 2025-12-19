@@ -36,7 +36,7 @@ SYNC_ENGINE = create_engine(SYNC_DATABASE_URL,
                             )
 SYNC_SESSION = sessionmaker(bind=SYNC_ENGINE,
                             autocommit=False,  # 关闭自动提交（手动控制事务）
-                            autoflush=False,  # 关闭自动刷新（避免不必要的数据库查询）
+                            autoflush=True,  # 关闭自动刷新（避免不必要的数据库查询）
                             expire_on_commit=False  # 提交后不失效实例（避免二次查询）
                             )
 

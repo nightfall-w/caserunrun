@@ -27,8 +27,6 @@ from app.testplan.models import CaseType
 from app.virtual_env.models import PythonVirtualEnvModel
 from utils.custom_logging import logger
 
-setting_curd = get_setting_crud(next(get_sync_db()))
-
 
 def create_error_html_report_file(workspace_id: int, git_project_name: str, case_type: str,
                                   case_path: str, case_name: str, case_author: str, case_level: int, result: str,
@@ -107,6 +105,7 @@ def get_git_token(token_type: str, workspace_id: int) -> tuple[str, str]:
     获取gitlab的token
     :return:
     """
+    setting_curd = get_setting_crud(next(get_sync_db()))
     gitlab_url, token = setting_curd.get_gitlab_credentials(token_type=token_type, workspace_id=workspace_id)
     if gitlab_url and token:
         return gitlab_url, token
