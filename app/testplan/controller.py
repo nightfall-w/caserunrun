@@ -491,7 +491,7 @@ class TestPlanCRUD:
             test_plan_id: Optional[int] = None,
             page: Optional[int] = None,
             size: Optional[int] = None
-    ) -> Tuple[int, List[Dict[str, Any]]]:
+    ) -> tuple[list[type[TestTaskModel]], int]:
         """
         获取指定工作空间下的测试任务（支持筛选测试计划，含总数+计划名称），按创建时间降序排列
 
@@ -544,17 +544,7 @@ class TestPlanCRUD:
         # 执行查询
         query_result = base_query.all()
 
-        # 6. 格式化结果：拼接任务字段 + 计划名称
-        tasks = []
-        for task in query_result:
-            # 将模型实例转为字典（保留所有字段）
-            task_dict = {
-                column.name: getattr(task, column.name)
-                for column in TestTaskModel.__table__.columns
-            }
-            tasks.append(task_dict)
-
-        return total, tasks
+        return query_result, total
 
     def trigger_testplan(self, test_plan_id: int, trigger_user: str) -> bool:
         """触发测试计划"""
@@ -597,6 +587,10 @@ class TestPlanCRUD:
                              test_environment=test_plan.test_environment,
                              task_status=TaskStatus.PENDING,
                              create_user=trigger_user,
+                             task_result={
+                                 "total_case_count": len(valid_cases),
+                                 "finished_case_count": 0
+                             },
                              create_time=now(),
                              update_time=now()
                              )

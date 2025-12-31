@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.core.auth_middleware import get_current_user
 from app.core.database import get_sync_db
+from app.core.orm_tools import model_to_dict
 from app.core.response import api_response, HttpErrcode
 from app.testplan.models import CaseType
 from app.user.controller import get_nickname_by_username
@@ -373,10 +374,20 @@ def get_test_tasks(request: TestTasksListRequest, db: Session = Depends(get_sync
     """
     crud = get_test_plan_crud(db)
     try:
-        count, test_tasks = crud.get_test_tasks_with_count(workspace_id=request.workspace_id,
+        test_tasks, total = crud.get_test_tasks_with_count(workspace_id=request.workspace_id,
                                                            test_plan_id=request.test_plan_id, page=request.page_num,
                                                            size=request.page_size)
-        return api_response(data={"count": count, "test_tasks": test_tasks})
+        nickname_cache = {}
+        test_tasks_list = []
+        for task in test_tasks:
+            if task.create_user not in nickname_cache:
+                nickname_cache[task.create_user] = get_nickname_by_username(db=db, username=task.create_user)
+            nickname = nickname_cache[task.create_user]
+            task_info = model_to_dict(task)
+            task_info['creator'] = {"username": task.create_user, "nickname": nickname}
+            test_tasks_list.append(task_info)
+
+        return api_response(data={"total": total, "test_tasks": test_tasks_list})
     except Exception as e:
         logger.error(f"查询测试任务列表失败: {str(e)}")
         return api_response(code=HttpErrcode.EXCEPTION, message=f"查询失败", data=None)

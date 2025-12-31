@@ -9,6 +9,7 @@ import WorkspaceConfig from '@/views/WorkspaceConfig.vue'
 import CaseSourceManage from '@/views/CaseSourceManage.vue'
 import TestCaseList from '@/views/TestCaseList.vue'
 import TestPlanList from '@/views/TestPlanList.vue'
+import TestTaskList from '@/views/TestTaskList.vue'
 
 const routes = [
   {
@@ -69,6 +70,13 @@ const routes = [
         path: 'test-plan-list',
         name: 'TestPlanList',
         component: TestPlanList,
+        meta: {requiresAuth: true},
+        props: true
+      },
+      {
+        path: 'test-task-list',
+        name: 'TestTaskList',
+        component: TestTaskList,
         meta: {requiresAuth: true},
         props: true
       }

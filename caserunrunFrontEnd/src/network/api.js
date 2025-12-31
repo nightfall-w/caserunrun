@@ -391,6 +391,17 @@ export function clearInvalidTestCaseFromPlan(params) {
   return request.delete('/api/v1/testplan/case/clearInvalid/' + params.test_plan_id);
 }
 
+/**
+ * 触发测试计划
+ */
 export function triggerTestPlan(params) {
   return request.post('/api/v1/testplan/trigger', params);
+}
+
+
+/**
+ * 获取测试任务列表
+ */
+export function getTestTaskList(params) {
+  return request.post('/api/v1/testplan/tasks/list', params)
 }

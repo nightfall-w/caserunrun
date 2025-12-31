@@ -182,6 +182,7 @@ class TestNGCaseRunner:
                                                            report_url=report_url,
                                                            report_path=report_html_path,
                                                            error_info=f"case运行异常，未能生成详细测试报告,请检查pox.xml中的maven-surefire-plugin中configuration中是否配置了{reports_directory},这是必须的，用于生成测试报告")
+
             return {"case_result": case_result, "case_report": report_url}
         except FunctionTimedOut as e:
             logger.error(f"case:{case_key}执行超时: {traceback.format_exc()}")

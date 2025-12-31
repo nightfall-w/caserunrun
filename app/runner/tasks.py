@@ -3,6 +3,7 @@ from __future__ import absolute_import, unicode_literals
 
 import json
 import os
+import time
 import traceback
 
 from funboost import boost, BoosterParams, BrokerEnum, ConcurrentModeEnum
@@ -14,13 +15,14 @@ from app.case_handler.case_parser import GitCaseParser
 from app.case_handler.models import PytestCaseModel, TestNGCaseModel
 from app.core.config import REPORT_ROOT, REPORT_URL
 from app.core.database import get_sync_db
+from app.core.redis import get_redis_cache
 from app.runner.pytest_runner import PytestCaseRunner, create_error_html_report_file
 from app.runner.testng_runner import TestNGCaseRunner
 from app.testplan.models import CaseType, TestTaskModel, TaskJobModel, JobStatus, TaskStatus
 from utils.custom_logging import logger
 
 
-class MyBoosterParams(BoosterParams):
+class BaseBoosterParams(BoosterParams):
     broker_kind: str = BrokerEnum.REDIS_ACK_ABLE
     max_retry_times: int = 0
     concurrent_mode: str = ConcurrentModeEnum.THREADING
@@ -44,7 +46,45 @@ def ui_json_2_dict(ui_json: str):
         return {}
 
 
-@boost(MyBoosterParams(
+def update_task_status(task_id: int, db: Session):
+    """
+    更新任务状态
+    :param task_id: 任务id
+    :param db: 数据库会话
+    :return:
+    """
+    redis_cache_instance = get_redis_cache()
+    lock_key = f"task_lock:{task_id}"
+    while True:
+        if not redis_cache_instance.get(lock_key):
+            redis_cache_instance.set(lock_key, 1, expire=5)
+            try:
+                # 直接使用传入的数据库会话
+                # 查询指定的任务
+                task = db.query(TestTaskModel).filter(TestTaskModel.id == task_id).first()
+                task_result = task.task_result
+                if task_result["finished_case_count"] + 1 == task_result["total_case_count"]:
+                    task.task_status = TaskStatus.COMPLETED
+                task_result["finished_case_count"] += 1
+                task.task_result = task_result
+                db.commit()
+
+            except Exception as e:
+                # 如果出现异常，回滚事务
+                db.rollback()
+                logger.error(f"更新任务状态时出错: {e}")
+                raise e
+            finally:
+                # 防止死锁 释放锁
+                redis_cache_instance.delete(lock_key)
+                break
+        else:
+            # 已经被其他任务上锁 等待1s后重试
+            time.sleep(1)
+            continue
+
+
+@boost(BaseBoosterParams(
     queue_name='case_task_executor',
     qps=1,
     concurrent_num=50,
@@ -69,6 +109,7 @@ def case_task_executor(workspace_id: int, plan_id: int, task_id: int):
             logger.info(f'取消任务: {cancel_case_job.case_name + "-----" + cancel_case_job.case_uuid}')
             cancel_case_job.job_status = JobStatus.CANCELED
             _db.commit()
+            update_task_status(task_id, db)
 
     # 获取task实例和jobs实例
     db = next(get_sync_db())
@@ -128,7 +169,7 @@ def case_task_executor(workspace_id: int, plan_id: int, task_id: int):
             if case_execute_result['case_result']['successful'] < 100:
                 # case通过率小于100 说明存在失败case
                 logger.error(f'{case_job.case_name + "-----" + case_job.case_uuid} 存在失败case')
-                case_job.job_status = JobStatus.COMPLETED
+                case_job.job_status = JobStatus.FAILED
                 case_job.job_result = case_execute_result['case_result']
                 case_job.report_path = case_execute_result['case_report']
                 db.commit()
@@ -139,11 +180,12 @@ def case_task_executor(workspace_id: int, plan_id: int, task_id: int):
             else:
                 # case通过率等于100 说明全部执行成功
                 logger.info(f'{case_job} case全部执行成功')
-                case_job.job_status = JobStatus.COMPLETED
+                case_job.job_status = JobStatus.SUCCESS
                 case_job.job_result = case_execute_result['case_result']
                 case_job.report_path = case_execute_result['case_report']
                 db.commit()
                 continue
+            update_task_status(task_id, db)
 
         except FunctionTimedOut:
             # case执行时间超时
@@ -175,13 +217,16 @@ def case_task_executor(workspace_id: int, plan_id: int, task_id: int):
                                           error_info="case执行超时,未能生成详细测试报告")
             cancel_job(case_jobs[index + 1:], _db=db)
             case_job.report_path = report_url
-            db.commit()
+            case_task.task_status = TaskStatus.TIMEOUT
+            db.commit(
+            cancel_job(case_jobs[index + 1:], db)
+            update_task_status(task_id, db)
             raise Exception(f'{case_job.case_name} 执行超时: {traceback.format_exc()}')
 
         except Exception:
             # case执行异常
             logger.error(f'{case_job.case_name} 执行异常: {traceback.format_exc()}')
-            case_job.job_status = JobStatus.FAILED
+            case_job.job_status = JobStatus.EXCEPTION
             db_case_info = db.query(case_model).filter(
                 case_model.case_uuid == case_job.case_uuid).first()
 
@@ -199,20 +244,23 @@ def case_task_executor(workspace_id: int, plan_id: int, task_id: int):
                                           case_author=db_case_info.case_author,
                                           report_url=report_url,
                                           report_path=report_html_path,
-                                          result=JobStatus.FAILED,
+                                          result=JobStatus.EXCEPTION,
                                           error_info=f"case执行异常,未能生成详细测试报告:{traceback.format_exc()}")
             case_job.report_path = report_url
+            db.commit()
             if case_task.fail_stop:
                 # 失败时停止 结束后续case执行
                 cancel_job(case_jobs[index + 1:], _db=db)
+                update_task_status(task_id, db)
                 raise Exception(f'{case_job.case_name} 执行异常,失败时终止: {traceback.format_exc()}')
             else:
+                update_task_status(task_id, db)
                 continue
 
     return f'测试任务: {task_id} 执行完成'
 
 
-@boost(MyBoosterParams(
+@boost(BaseBoosterParams(
     queue_name='pytest_case_job_executor',
     qps=1,
     concurrent_num=50,
@@ -238,6 +286,7 @@ def pytest_case_job_executor(workspace_id: int, plan_id: int, task_id: int, job_
 
     case_job = db.query(TaskJobModel).filter(TaskJobModel.id == job_id).first()
     case_job.job_status = JobStatus.RUNNING
+    case_task.task_status = TaskStatus.RUNNING
     db.commit()
     case_extra_info = GitCaseParser.parse_case_uuid(case_uuid=case_job.case_uuid)
     try:
@@ -258,7 +307,7 @@ def pytest_case_job_executor(workspace_id: int, plan_id: int, task_id: int, job_
         if case_execute_result['case_result']['successful'] < 100:
             # case通过率小于100 说明存在失败case
             logger.error(f'{case_job.case_name} 存在失败case')
-            case_job.job_status = JobStatus.COMPLETED
+            case_job.job_status = JobStatus.FAILED
             case_job.job_result = case_execute_result['case_result']
             case_job.report_path = case_execute_result['case_report']
             db.commit()
@@ -266,7 +315,7 @@ def pytest_case_job_executor(workspace_id: int, plan_id: int, task_id: int, job_
         else:
             # case通过率等于100 说明全部执行成功
             logger.info(f'{case_job.case_name} case全部执行成功')
-            case_job.job_status = JobStatus.COMPLETED
+            case_job.job_status = JobStatus.SUCCESS
             case_job.job_result = case_execute_result['case_result']
             case_job.report_path = case_execute_result['case_report']
             db.commit()
@@ -300,7 +349,7 @@ def pytest_case_job_executor(workspace_id: int, plan_id: int, task_id: int, job_
 
     except Exception:
         # case执行异常
-        case_job.job_status = JobStatus.FAILED
+        case_job.job_status = JobStatus.EXCEPTION
         db_case_info = db.query(PytestCaseModel).filter(
             PytestCaseModel.case_uuid == case_job.case_uuid).first()
         report_name = case_job.case_path.split('/')[-1].split('.')[0] + '.html'
@@ -317,14 +366,14 @@ def pytest_case_job_executor(workspace_id: int, plan_id: int, task_id: int, job_
                                       case_author=db_case_info.case_author,
                                       report_url=report_url,
                                       report_path=report_html_path,
-                                      result=JobStatus.FAILED,
+                                      result=JobStatus.EXCEPTION,
                                       error_info=f"case执行异常,未能生成详细测试报告:{traceback.format_exc()}")
         case_job.report_path = report_url
         db.commit()
         raise Exception(f'{case_job.case_name} 执行异常: {traceback.format_exc()}')
 
 
-@boost(MyBoosterParams(
+@boost(BaseBoosterParams(
     queue_name='testng_case_task_executor',
     qps=1,
     concurrent_num=50,
@@ -387,7 +436,7 @@ def testng_case_task_executor(workspace_id: int, plan_id: int, task_id: int):
             if case_execute_result['case_result']['successful'] < 100:
                 # case通过率小于100 说明存在失败case
                 logger.error(f'{case_job.case_name + "-----" + case_job.case_uuid} 存在失败case')
-                case_job.job_status = JobStatus.COMPLETED
+                case_job.job_status = JobStatus.FAILED
                 case_job.job_result = case_execute_result['case_result']
                 case_job.report_path = case_execute_result['case_report']
                 db.commit()
@@ -398,7 +447,7 @@ def testng_case_task_executor(workspace_id: int, plan_id: int, task_id: int):
             else:
                 # case通过率等于100 说明全部执行成功
                 logger.info(f'{case_job} case全部执行成功')
-                case_job.job_status = JobStatus.COMPLETED
+                case_job.job_status = JobStatus.SUCCESS
                 case_job.job_result = case_execute_result['case_result']
                 case_job.report_path = case_execute_result['case_report']
                 db.commit()
@@ -440,7 +489,7 @@ def testng_case_task_executor(workspace_id: int, plan_id: int, task_id: int):
         except Exception:
             # case执行异常
             logger.error(f'{case_job.case_name} 执行异常: {traceback.format_exc()}')
-            case_job.job_status = JobStatus.FAILED
+            case_job.job_status = JobStatus.EXCEPTION
             db_case_info = db.query(TestNGCaseModel).filter(
                 TestNGCaseModel.case_uuid == case_job.case_uuid).first()
 
@@ -458,7 +507,7 @@ def testng_case_task_executor(workspace_id: int, plan_id: int, task_id: int):
                                           case_author=db_case_info.case_author,
                                           report_url=report_url,
                                           report_path=report_html_path,
-                                          result=JobStatus.FAILED,
+                                          result=JobStatus.EXCEPTION,
                                           error_info=f"case执行异常,未能生成详细测试报告:{traceback.format_exc()}")
             case_job.report_path = report_url
             if case_task.fail_stop:
@@ -471,7 +520,7 @@ def testng_case_task_executor(workspace_id: int, plan_id: int, task_id: int):
     return f'测试任务: {task_id} 执行完成'
 
 
-@boost(MyBoosterParams(
+@boost(BaseBoosterParams(
     queue_name='testng_case_job_executor',
     qps=1,
     concurrent_num=50,
@@ -496,6 +545,7 @@ def testng_case_job_executor(workspace_id: int, plan_id: int, task_id: int, job_
 
     case_job = db.query(TaskJobModel).filter(TaskJobModel.id == job_id).first()
     case_job.job_status = JobStatus.RUNNING
+    case_task.task_status = TaskStatus.RUNNING
     db.commit()
     case_extra_info = GitCaseParser.parse_case_uuid(case_uuid=case_job.case_uuid)
     try:
@@ -517,7 +567,7 @@ def testng_case_job_executor(workspace_id: int, plan_id: int, task_id: int, job_
         if case_execute_result['case_result']['successful'] < 100:
             # case通过率小于100 说明存在失败case
             logger.error(f'{case_job.case_name} 存在失败case')
-            case_job.job_status = JobStatus.COMPLETED
+            case_job.job_status = JobStatus.FAILED
             case_job.job_result = case_execute_result['case_result']
             case_job.report_path = case_execute_result['case_report']
             db.commit()
@@ -525,7 +575,7 @@ def testng_case_job_executor(workspace_id: int, plan_id: int, task_id: int, job_
         else:
             # case通过率等于100 说明全部执行成功
             logger.info(f'{case_job.case_name} case全部执行成功')
-            case_job.job_status = JobStatus.COMPLETED
+            case_job.job_status = JobStatus.SUCCESS
             case_job.job_result = case_execute_result['case_result']
             case_job.report_path = case_execute_result['case_report']
             db.commit()
@@ -559,7 +609,7 @@ def testng_case_job_executor(workspace_id: int, plan_id: int, task_id: int, job_
 
     except Exception:
         # case执行异常
-        case_job.job_status = JobStatus.FAILED
+        case_job.job_status = JobStatus.EXCEPTION
         db_case_info = db.query(TestNGCaseModel).filter(
             TestNGCaseModel.case_uuid == case_job.case_uuid).first()
         report_name = case_job.case_path.split('/')[-1].split('.')[0] + '.html'
@@ -576,7 +626,7 @@ def testng_case_job_executor(workspace_id: int, plan_id: int, task_id: int, job_
                                       case_author=db_case_info.case_author,
                                       report_url=report_url,
                                       report_path=report_html_path,
-                                      result=JobStatus.FAILED,
+                                      result=JobStatus.EXCEPTION,
                                       error_info=f"case执行异常,未能生成详细测试报告:{traceback.format_exc()}")
         case_job.report_path = report_url
         db.commit()

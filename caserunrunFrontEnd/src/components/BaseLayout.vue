@@ -63,6 +63,14 @@
               <span v-if="!isCollapse">测试计划</span>
             </el-menu-item>
 
+            <el-menu-item :index="'/workspace/' + workspaceId +'/test-task-list'"
+                          v-if="workspaceId">
+              <el-icon class="text-lg">
+                <Film/>
+              </el-icon>
+              <span v-if="!isCollapse">测试任务</span>
+            </el-menu-item>
+
             <el-menu-item :index="'/workspace/' + workspaceId +'/workspace-config'"
                           v-if="workspaceId && isWorkspaceAdmin">
               <el-icon class="text-lg">

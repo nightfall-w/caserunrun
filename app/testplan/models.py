@@ -29,7 +29,6 @@ class TaskStatus(StrEnum):
     PENDING = "Pending"
     RUNNING = "Running"
     COMPLETED = "Completed"
-    FAILED = "Failed"
     CANCELED = "Canceled"
     TIMEOUT = "Timeout"
 
@@ -37,8 +36,9 @@ class TaskStatus(StrEnum):
 class JobStatus(StrEnum):
     PENDING = "Pending"
     RUNNING = "Running"
-    COMPLETED = "Completed"
+    SUCCESS = "Success"
     FAILED = "Failed"
+    EXCEPTION = "Exception"
     CANCELED = "Canceled"
     TIMEOUT = "Timeout"
 

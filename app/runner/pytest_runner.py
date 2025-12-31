@@ -12,7 +12,6 @@ import xml.etree.ElementTree as ET
 from datetime import datetime
 
 import psutil
-from funboost.utils.dependency_packages.mongomq.mongomq import JobStatus
 from funboost.utils.func_timeout.exceptions import FunctionTimedOut
 from jinja2 import Environment, FileSystemLoader
 
@@ -23,7 +22,7 @@ from app.case_source.models import CaseSourceRelationModel
 from app.core.config import REPORT_URL, CASE_HOUSE_ROOT, REPORT_ROOT
 from app.core.database import get_sync_db
 from app.setting.controller import get_setting_crud
-from app.testplan.models import CaseType
+from app.testplan.models import CaseType, JobStatus
 from app.virtual_env.models import PythonVirtualEnvModel
 from utils.custom_logging import logger
 
@@ -82,22 +81,6 @@ def create_error_html_report_file(workspace_id: int, git_project_name: str, case
         logger.error(f"创建错误报告文件时出错：{e}")
         logger.error(traceback.format_exc())
         return None
-
-
-def terminate_process(pid):
-    """
-    终止进程
-    :param pid: 待终止进程的pid
-    :return:
-    """
-    try:
-        process = psutil.Process(pid)
-        process.terminate()
-        logger.info(f"进程 {pid} 已成功终止。")
-    except psutil.NoSuchProcess:
-        logger.info(f"找不到进程 {pid}。")
-    except Exception as e:
-        logger.info(f"终止进程 {pid} 失败：{e}。")
 
 
 def get_git_token(token_type: str, workspace_id: int) -> tuple[str, str]:
@@ -333,4 +316,5 @@ class PytestCaseRunner:
             logger.error(f"case:{case_key}执行异常: {traceback.format_exc()}")
             raise Exception(traceback.format_exc())
         finally:
+            update_task_status(task_id, JobStatus.FINISHED)
             cleanup_processes(_processes)
