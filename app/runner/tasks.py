@@ -218,7 +218,7 @@ def case_task_executor(workspace_id: int, plan_id: int, task_id: int):
             cancel_job(case_jobs[index + 1:], _db=db)
             case_job.report_path = report_url
             case_task.task_status = TaskStatus.TIMEOUT
-            db.commit(
+            db.commit()
             cancel_job(case_jobs[index + 1:], db)
             update_task_status(task_id, db)
             raise Exception(f'{case_job.case_name} 执行超时: {traceback.format_exc()}')
