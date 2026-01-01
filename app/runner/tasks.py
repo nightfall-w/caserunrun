@@ -63,7 +63,7 @@ def update_task_status(task_id: int, db: Session):
                 # 查询指定的任务
                 logger.info(f"更新任务状态: {task_id}")
                 task = db.query(TestTaskModel).filter(TestTaskModel.id == task_id).first()
-                task_result = task.task_result
+                task_result = task.task_result.copy()   # 调试
                 if task_result["finished_case_count"] + 1 == task_result["total_case_count"]:
                     task.task_status = TaskStatus.COMPLETED
                 task_result["finished_case_count"] += 1
