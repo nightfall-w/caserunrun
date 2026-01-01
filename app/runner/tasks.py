@@ -63,7 +63,7 @@ def update_task_status(task_id: int, db: Session):
                 # 查询指定的任务
                 logger.info(f"更新任务状态: {task_id}")
                 task = db.query(TestTaskModel).filter(TestTaskModel.id == task_id).first()
-                task_result = task.task_result.copy()   # 调试
+                task_result = task.task_result.copy()  # 这是大坑，一定要用 copy，SQLAlchemy的ORM跟踪机制对于复杂对象（如字典）的变更检测可能不如对简单属性的变更检测敏感。当修改字典内部元素时，ORM可能无法检测到这个变化，除非整个对象被重新赋值。使用.copy()方法创建新字典对象，确保ORM能正确检测到变更并同步到数据库。
                 if task_result["finished_case_count"] + 1 == task_result["total_case_count"]:
                     task.task_status = TaskStatus.COMPLETED
                 task_result["finished_case_count"] += 1
