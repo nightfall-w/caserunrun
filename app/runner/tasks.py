@@ -67,6 +67,7 @@ def update_task_status(task_id: int, db: Session):
                 if task_result["finished_case_count"] + 1 == task_result["total_case_count"]:
                     task.task_status = TaskStatus.COMPLETED
                 task_result["finished_case_count"] += 1
+                logger.info(f"任务状态更新中: {task_id},task_result:{task_result}")
                 task.task_result = task_result
                 db.commit()
                 logger.info(f"任务状态更新完成: {task_id}")
