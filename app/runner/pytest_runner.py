@@ -316,5 +316,4 @@ class PytestCaseRunner:
             logger.error(f"case:{case_key}执行异常: {traceback.format_exc()}")
             raise Exception(traceback.format_exc())
         finally:
-            update_task_status(task_id, JobStatus.FINISHED)
             cleanup_processes(_processes)
