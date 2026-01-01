@@ -61,6 +61,7 @@ def update_task_status(task_id: int, db: Session):
             try:
                 # 直接使用传入的数据库会话
                 # 查询指定的任务
+                logger.info(f"更新任务状态: {task_id}")
                 task = db.query(TestTaskModel).filter(TestTaskModel.id == task_id).first()
                 task_result = task.task_result
                 if task_result["finished_case_count"] + 1 == task_result["total_case_count"]:
@@ -68,6 +69,7 @@ def update_task_status(task_id: int, db: Session):
                 task_result["finished_case_count"] += 1
                 task.task_result = task_result
                 db.commit()
+                logger.info(f"任务状态更新完成: {task_id}")
 
             except Exception as e:
                 # 如果出现异常，回滚事务
