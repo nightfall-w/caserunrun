@@ -20,7 +20,7 @@ from app.testplan.request_models import (
     UpdateTestPlanRequest,
     TestPlanListRequest,
     AddTestCaseRequest,
-    RemoveTestCaseRequest, BatchAddTestCaseRequest, TriggerTestPlanRequest, TestTasksListRequest
+    RemoveTestCaseRequest, BatchAddTestCaseRequest, TriggerTestPlanRequest, TestTasksListRequest, TestTaskDetailRequest
 )
 from utils.custom_logging import logger
 
@@ -390,4 +390,22 @@ def get_test_tasks(request: TestTasksListRequest, db: Session = Depends(get_sync
         return api_response(data={"total": total, "test_tasks": test_tasks_list})
     except Exception as e:
         logger.error(f"查询测试任务列表失败: {str(e)}")
+        return api_response(code=HttpErrcode.EXCEPTION, message=f"查询失败", data=None)
+
+
+@router.post("/tasks/detail")
+def get_test_task_detail(request: TestTaskDetailRequest, db: Session = Depends(get_sync_db)):
+    """
+    查询测试任务详情
+    """
+    crud = get_test_plan_crud(db)
+    try:
+        task, jobs = crud.get_task_detail(task_id=request.task_id)
+        nickname = get_nickname_by_username(db=db, username=task.create_user)
+        task_info = model_to_dict(task)
+        task_info['creator'] = {"username": task.create_user, "nickname": nickname}
+        task_info['jobs'] = [model_to_dict(job) for job in jobs]
+        return api_response(data=task_info)
+    except Exception as e:
+        logger.error(f"查询测试任务详情失败: {str(e)}")
         return api_response(code=HttpErrcode.EXCEPTION, message=f"查询失败", data=None)

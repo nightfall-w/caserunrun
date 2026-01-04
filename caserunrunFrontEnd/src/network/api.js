@@ -405,3 +405,10 @@ export function triggerTestPlan(params) {
 export function getTestTaskList(params) {
   return request.post('/api/v1/testplan/tasks/list', params)
 }
+
+/**
+ * 获取测试任务详情
+ */
+export function getTestTaskDetail(params) {
+  return request.post('/api/v1/testplan/tasks/detail', params)
+}

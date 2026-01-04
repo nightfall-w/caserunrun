@@ -546,6 +546,21 @@ class TestPlanCRUD:
 
         return query_result, total
 
+    def get_task_detail(self, task_id: int) -> tuple[type[TestTaskModel], list]:
+        """
+        获取任务详情
+        :param task_id: 任务id
+        :return: 任务详情
+        """
+        task = self.db.query(TestTaskModel).filter(TestTaskModel.id == task_id).first()
+        if not task:
+            raise Exception(f"任务id：{task_id} 不存在")
+        jobs = self.get_task_jobs(task_id)
+        return task, jobs
+
+    def get_task_jobs(self, task_id: int) -> list:
+        return self.db.query(TaskJobModel).filter(TaskJobModel.task_id == task_id).all()
+
     def trigger_testplan(self, test_plan_id: int, trigger_user: str) -> bool:
         """触发测试计划"""
         test_plan = self.get_test_plan_by_id(test_plan_id)

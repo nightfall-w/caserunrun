@@ -5,13 +5,13 @@
       <!-- 左侧 Logo + 系统名称 -->
       <div class="flex items-center space-x-4">
         <!-- Logo 区域，建议用 200x50 尺寸更协调 -->
-        <el-image
-          :src=logo
-          alt="聚合测试平台"
-          :style="{ width: '160px', height: '40px' }"
-          class="cursor-pointer"
-          @click="goHome"
-        />
+<!--        <el-image-->
+<!--          :src=logo-->
+<!--          alt="聚合测试平台"-->
+<!--          :style="{ width: '160px', height: '40px' }"-->
+<!--          class="cursor-pointer"-->
+<!--          @click="goHome"-->
+<!--        />-->
         <div class="system-title flex flex-col">
           <span class="text-lg font-bold text-white">
             聚合测试
@@ -281,6 +281,7 @@ const handleNotifyCommand = (command) => {
   justify-content: center;
   gap: 2px;
   height: 40px;
+  margin-left: 10px;
 }
 
 .system-title span:first-child {

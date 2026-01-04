@@ -78,3 +78,8 @@ class TestTasksListRequest(PaginationRequestModel):
     """测试任务列表请求"""
     workspace_id: int
     test_plan_id: Optional[int] = None
+
+
+class TestTaskDetailRequest(BaseModel):
+    """测试任务详情请求"""
+    task_id: int
