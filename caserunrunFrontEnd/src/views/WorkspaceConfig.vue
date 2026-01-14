@@ -5,6 +5,9 @@
         <div class="header-main">
           <div class="header-left">
             <h1 class="page-title">工作空间配置管理</h1>
+            <div class="header-description">
+              <p>管理工作空间级别的配置项</p>
+            </div>
           </div>
           <div class="header-right">
             <el-button
@@ -17,9 +20,6 @@
             </el-button>
           </div>
         </div>
-        <div class="header-description">
-          <p>管理工作空间级别的配置项</p>
-        </div>
       </div>
 
       <!-- 配置项表格 -->
@@ -31,7 +31,8 @@
           class="config-table"
           header-row-class-name="table-header"
           row-class-name="table-row"
-          size="small"
+          height="calc(100vh - 180px)"
+          empty-text="暂无配置项数据"
         >
           <el-table-column prop="key" label="键名" min-width="150">
             <template #default="scope">
@@ -48,7 +49,9 @@
           <el-table-column prop="desc" label="描述" min-width="200">
             <template #default="scope">
               <div class="desc-cell">
-                <span class="desc-text">{{ scope.row.desc }}</span>
+                <el-tooltip :content="scope.row.desc" placement="top" :show-after="200">
+                  <span class="desc-text">{{ scope.row.desc }}</span>
+                </el-tooltip>
               </div>
             </template>
           </el-table-column>
@@ -84,11 +87,10 @@
                 <el-button
                   size="small"
                   type="primary"
-                  link
                   @click="openEditDialog(scope.row)"
                   class="action-button"
+                  :icon="Edit" circle
                 >
-                  编辑
                 </el-button>
               </div>
             </template>
@@ -108,35 +110,25 @@
       </div>
     </div>
 
-    <!-- 固定在底部的分页 -->
-    <div v-if="hasPermission" class="pagination-container">
-      <el-pagination
-        v-model:current-page="pagination.currentPage"
-        v-model:page-size="pagination.pageSize"
-        :page-sizes="[10, 20, 50, 100]"
-        :total="pagination.total"
-        layout="total, sizes, prev, pager, next, jumper"
-        @size-change="handleSizeChange"
-        @current-change="handleCurrentChange"
-        size="small"
-      />
-    </div>
-
     <!-- 编辑对话框 -->
     <el-dialog
       v-if="hasPermission"
       :title="dialogTitle"
       v-model="dialogVisible"
-      width="600px"
+      width="550px"
       :before-close="handleDialogClose"
-      class="config-dialog"
+      class="config-dialog custom-dialog"
+      destroy-on-close
     >
+      <div class="dialog-header">
+        <h3 class="dialog-title">{{ dialogTitle }}</h3>
+      </div>
       <el-form
         ref="configFormRef"
         :model="configForm"
         :rules="configFormRules"
-        label-width="80px"
-        class="config-form"
+        label-width="90px"
+        class="config-form custom-form"
         size="small"
       >
         <el-form-item label="键名" prop="key">
@@ -144,7 +136,7 @@
             v-model="configForm.key"
             placeholder="请输入配置项键名"
             disabled
-            class="form-input"
+            class="custom-input"
           />
         </el-form-item>
 
@@ -154,7 +146,7 @@
             placeholder="请选择配置项类型"
             style="width: 100%"
             disabled
-            class="form-select"
+            class="custom-select"
           >
             <el-option label="字符串" value="STRING"/>
             <el-option label="数字" value="NUMBER"/>
@@ -175,7 +167,7 @@
             placeholder="请输入配置项值"
             :rows="3"
             @input="handleValueInput"
-            class="form-textarea"
+            class="custom-textarea"
           />
           <div class="value-preview-container">
             <div class="value-preview"
@@ -208,27 +200,23 @@
             type="textarea"
             placeholder="请输入配置项描述"
             :rows="4"
-            class="form-textarea"
+            class="custom-textarea"
           />
         </el-form-item>
       </el-form>
-      <template #footer>
-        <span class="dialog-footer">
-          <el-button @click="dialogVisible = false"
-                     class="footer-button cancel-button"
-                     size="small">取消</el-button>
-          <el-button
-            type="primary"
-            @click="handleSubmit"
-            :loading="submitLoading"
-            :disabled="configForm.required && !configForm.value"
-            class="footer-button confirm-button"
-            size="small"
-          >
-            保存
-          </el-button>
-        </span>
-      </template>
+      <div class="dialog-footer">
+        <el-button @click="dialogVisible = false" class="footer-button cancel-button">取消
+        </el-button>
+        <el-button
+          type="primary"
+          @click="handleSubmit"
+          :loading="submitLoading"
+          :disabled="configForm.required && !configForm.value"
+          class="footer-button confirm-button"
+        >
+          保存
+        </el-button>
+      </div>
     </el-dialog>
   </div>
 </template>
@@ -236,8 +224,8 @@
 
 <script setup>
 import {ref, reactive, onMounted, computed} from 'vue'
-import {ElMessage, ElMessageBox} from 'element-plus'
-import {Lock} from '@element-plus/icons-vue'
+import {ElMessage, ElMessageBox, ElTooltip} from 'element-plus'
+import {Lock, Edit} from '@element-plus/icons-vue'
 import {useRouter, useRoute} from 'vue-router'
 import {
   getWorkspaceConfigList,
@@ -706,15 +694,15 @@ const goToHome = () => {
 }
 </script>
 
-
 <style scoped>
 .workspace-config-container {
   display: flex;
   flex-direction: column;
   height: 100vh;
   background: #f5f7fa;
-  padding: 5px 5px 0 5px;
+  padding: 10px;
   box-sizing: border-box;
+  overflow: hidden;
 }
 
 .main-content {
@@ -724,11 +712,12 @@ const goToHome = () => {
 
 .page-header {
   background: white;
-  border-radius: 6px;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
-  padding: 10px 15px;
-  margin-bottom: 10px;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  padding: 15px 20px;
+  margin-bottom: 15px;
   border: 1px solid #ebeef5;
+  flex-shrink: 0;
 }
 
 .header-main {
@@ -741,36 +730,45 @@ const goToHome = () => {
 
 .page-title {
   margin: 0;
-  font-size: 18px;
-  font-weight: 600;
-  color: #303133;
+  font-size: 20px;
+  font-weight: 700;
+  color: #2c3e50;
 }
 
 .header-description p {
   margin: 8px 0 0 0;
-  font-size: 12px;
-  color: #918c8c;
+  font-size: 14px;
+  color: #7f8c8d;
 }
 
 .header-right {
   display: flex;
-  gap: 8px;
+  gap: 12px;
   align-items: center;
 }
 
 .back-btn {
-  border-radius: 4px;
-  transition: all 0.2s ease;
-  font-size: 12px;
-  padding: 6px 10px;
+  border-radius: 12px;
+  transition: all 0.3s ease;
+  font-weight: 600;
+  height: 42px;
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: none;
+  color: white;
+}
+
+.back-btn:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.6);
 }
 
 .table-container {
   background: white;
-  border-radius: 6px;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
   overflow: hidden;
-  height: calc(100% - 120px);
+  height: 100%;
   display: flex;
   flex-direction: column;
   border: 1px solid #ebeef5;
@@ -781,86 +779,340 @@ const goToHome = () => {
   flex: 1;
 }
 
+/* 表格头部样式 */
 :deep(.table-header th) {
-  background: linear-gradient(180deg, #e2e8f0 0%, #cbd5e0 100%) !important;
-  color: #1e293b !important;
-  font-weight: 600 !important;
-  font-size: 12px !important;
-  padding: 10px 0 !important;
-  border-bottom: 1px solid #cbd5e1 !important;
+  background: #f8fafc !important;
+  color: #2c3e50 !important;
+  font-weight: 700 !important;
+  font-size: 15px !important;
+  padding: 18px 0 !important;
+  border-bottom: 1px solid rgba(235, 238, 245, 0.5) !important;
   position: relative;
+  text-align: center !important;
 }
 
+:deep(.table-header th):first-child {
+  border-top-left-radius: 12px;
+}
+
+:deep(.table-header th):last-child {
+  border-top-right-radius: 12px;
+}
+
+:deep(.table-header th:hover) {
+  background: #edf2f7 !important;
+}
+
+/* 表格行样式 */
 :deep(.table-row td) {
-  padding: 8px 0 !important;
-  font-size: 12px;
+  color: #34495e;
+  transition: all 0.3s ease;
+  font-size: 15px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+  padding: 16px 0 !important;
+  border-color: rgba(235, 238, 245, 0.5) !important;
+  background-color: rgba(250, 250, 250, 0.5) !important;
+}
+
+:deep(.table-row:nth-child(even) td) {
+  background-color: rgba(255, 255, 255, 0.7) !important;
+}
+
+:deep(.table-row td::before) {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  z-index: -1;
 }
 
 :deep(.table-row:hover td) {
-  background-color: #f8fafc !important;
+  background-color: transparent !important;
+  color: #2c3e50;
+  transform: scale(1.02);
 }
 
-.type-tag,
-.status-tag {
-  margin: 0;
+:deep(.table-row:hover td::before) {
+  opacity: 1;
+}
+
+/* 标签样式 */
+:deep(.type-tag),
+:deep(.status-tag) {
+  font-size: 13px;
+  padding: 6px 14px;
+  border-radius: 24px;
   border: none;
-  font-weight: 500;
-  font-size: 12px;
-  padding: 2px 6px;
-  border-radius: 8px;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+  font-weight: 600;
 }
 
+:deep(.type-tag:hover),
+:deep(.status-tag:hover) {
+  transform: translateY(-3px) scale(1.05);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+}
+
+/* 文本样式 */
 .key-text {
-  font-weight: 500;
-  color: #303133;
+  font-weight: 700;
+  color: #667eea;
+  font-size: 14px;
+  padding: 4px 10px;
+  background: rgba(102, 126, 234, 0.1);
+  border-radius: 20px;
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: middle;
 }
 
 .value-cell {
   max-width: 200px;
+  margin: 0 auto;
 }
 
 .value-text {
-  display: block;
-  white-space: nowrap;
+  display: inline-block;
+  max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
-  color: #606266;
+  white-space: nowrap;
+  vertical-align: middle;
+  color: #2c3e50;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  padding: 6px 12px;
+  border-radius: 8px;
+  background: rgba(102, 126, 234, 0.05);
+}
+
+.value-text:hover {
+  color: #667eea;
+  background-color: rgba(102, 126, 234, 0.15);
+  transform: translateX(5px);
 }
 
 .desc-cell {
   max-width: 250px;
+  margin: 0 auto;
 }
 
 .desc-text {
-  display: block;
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: middle;
   color: #606266;
-  white-space: normal;
-  word-break: break-all;
-  line-height: 1.4;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  padding: 6px 12px;
+  border-radius: 8px;
+  background: rgba(102, 126, 234, 0.05);
+}
+
+.desc-text:hover {
+  color: #667eea;
+  background-color: rgba(102, 126, 234, 0.15);
+  transform: translateX(5px);
 }
 
 .time-text {
-  color: #909399;
-  font-size: 12px;
+  color: #7f8c8d;
+  font-size: 14px;
 }
 
 .action-cell {
   display: flex;
   justify-content: center;
-  gap: 5px;
+  gap: 10px;
 }
 
 .action-button {
-  font-size: 12px;
-  padding: 3px 6px;
-  border-radius: 3px;
-  transition: all 0.2s ease;
+  padding: 6px 10px !important;
+  font-size: 14px !important;
+  font-weight: 500 !important;
+  transition: all 0.3s ease !important;
+  border-radius: 8px !important;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
 }
 
 .action-button:hover {
-  background-color: #e3f2fd;
-  color: #1976d2 !important;
+  transform: translateY(-2px) scale(1.05);
+  box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
+}
+
+/* 弹窗美化核心样式 */
+:deep(.config-dialog) {
+  border-radius: 12px !important;
+  overflow: hidden;
+  box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.15) !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  width: 550px !important;
+}
+
+:deep(.config-dialog .el-dialog__header) {
+  display: none;
+}
+
+:deep(.config-dialog .dialog-header) {
+  padding: 20px 25px;
+  border-bottom: 1px solid #f0f2f5;
+  background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+  margin: -20px -25px 20px -25px;
+  border-radius: 12px 12px 0 0;
+}
+
+:deep(.config-dialog .dialog-title) {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: #1e293b;
+  letter-spacing: 0.3px;
+}
+
+:deep(.config-dialog .config-form) {
+  padding: 0 15px;
+}
+
+:deep(.config-dialog .el-form-item) {
+  margin-bottom: 20px;
+  transition: all 0.2s ease;
+  border-radius: 10px;
+  padding: 10px;
+}
+
+:deep(.config-dialog .el-form-item:hover) {
+  transform: translateX(3px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
+}
+
+:deep(.config-dialog .el-form-item__label) {
+  font-size: 14px;
+  padding: 0 10px 6px 0;
+  text-align: right;
+  color: #475569;
+  font-weight: 500;
+}
+
+:deep(.config-dialog .el-form-item__label .el-form-item__label-required) {
+  color: #ef4444;
+  margin-right: 3px;
+}
+
+/* 输入框美化 */
+:deep(.config-dialog .form-input .el-input__wrapper),
+:deep(.config-dialog .form-select .el-select__wrapper),
+:deep(.config-dialog .form-textarea .el-textarea__inner) {
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03) inset;
+  transition: all 0.25s ease;
+  height: 42px;
+}
+
+:deep(.config-dialog .form-input .el-input__wrapper:hover),
+:deep(.config-dialog .form-select .el-select__wrapper:hover),
+:deep(.config-dialog .form-textarea .el-textarea__inner:hover) {
+  border-color: #94a3b8;
+  box-shadow: 0 0 0 3px rgba(148, 163, 184, 0.1);
+}
+
+:deep(.config-dialog .form-input .el-input__wrapper.is-focus),
+:deep(.config-dialog .form-select .el-select__wrapper.is-focused),
+:deep(.config-dialog .form-textarea .el-textarea__inner:focus) {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+  outline: none;
+}
+
+:deep(.config-dialog .el-textarea__inner) {
+  min-height: 90px !important;
+  resize: vertical;
+  line-height: 1.6;
+  font-size: 14px;
+  border-radius: 8px;
+}
+
+/* 底部按钮区域 */
+:deep(.config-dialog .dialog-footer) {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 20px 25px 25px;
+  border-top: 1px solid #f0f2f5;
+  background-color: #f8fafc;
+  margin: 15px -25px -25px -25px;
+  border-radius: 0 0 12px 12px;
+}
+
+:deep(.config-dialog .footer-button) {
+  padding: 10px 24px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+:deep(.config-dialog .cancel-button) {
+  border: 1px solid #e2e8f0;
+  color: #475569;
+  background-color: #ffffff;
+}
+
+:deep(.config-dialog .cancel-button:hover) {
+  background-color: #f1f5f9;
+  border-color: #cbd5e1;
+  transform: translateY(-2px);
+}
+
+:deep(.config-dialog .confirm-button) {
+  background-color: #667eea;
+  border-color: #667eea;
+  color: white;
+}
+
+:deep(.config-dialog .confirm-button:hover) {
+  background-color: #5a6fd8;
+  border-color: #5a6fd8;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
+}
+
+:deep(.config-dialog .confirm-button:active) {
+  transform: translateY(0);
+}
+
+/* 表单验证错误样式优化 */
+:deep(.el-form-item.is-error .el-input__wrapper),
+:deep(.el-form-item.is-error .el-select__wrapper),
+:deep(.el-form-item.is-error .el-textarea__inner) {
+  border-color: #ef4444 !important;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15) !important;
+}
+
+:deep(.el-form-item__error) {
+  font-size: 12px;
+  color: #ef4444;
+  margin-top: 4px;
+  padding-left: 2px;
 }
 
 .pagination-container {
@@ -878,108 +1130,17 @@ const goToHome = () => {
   margin-top: 10px;
 }
 
-.config-dialog {
-  border-radius: 8px;
-  overflow: hidden;
-}
+/* 响应式调整 */
+@media (max-width: 768px) {
+  :deep(.config-dialog) {
+    width: 95% !important;
+  }
 
-.config-dialog :deep(.el-dialog__header) {
-  background-color: #f5f7fa;
-  padding: 15px 20px;
-  border-bottom: 1px solid #ebeef5;
-}
-
-.config-dialog :deep(.el-dialog__title) {
-  font-size: 18px;
-  font-weight: 600;
-  color: #303133;
-}
-
-.config-dialog :deep(.el-dialog__body) {
-  padding: 20px;
-}
-
-.config-form {
-  padding: 0;
-}
-
-.form-input,
-.form-select,
-.form-textarea {
-  width: 100%;
-}
-
-.value-preview-container {
-  width: 100%;
-  margin-top: 10px;
-}
-
-.value-preview {
-  padding: 12px;
-  background-color: #f5f7fa;
-  border-radius: 4px;
-  font-size: 12px;
-  border: 1px solid #e4e7ed;
-}
-
-.preview-label {
-  font-weight: 600;
-  margin-bottom: 8px;
-  color: #606266;
-}
-
-.preview-content {
-  background-color: white;
-  padding: 10px;
-  border-radius: 4px;
-  margin-bottom: 8px;
-  max-height: 100px;
-  overflow-y: auto;
-  border: 1px solid #e4e7ed;
-}
-
-.preview-content pre {
-  margin: 0;
-  white-space: pre-wrap;
-  word-wrap: break-word;
-  font-family: monospace;
-  font-size: 12px;
-  color: #303133;
-}
-
-.preview-type {
-  font-weight: 500;
-  color: #909399;
-}
-
-.preview-type.success {
-  color: #67c23a;
-}
-
-.preview-type.error {
-  color: #f56c6c;
-}
-
-.dialog-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
-  padding: 0;
-}
-
-.footer-button {
-  padding: 8px 20px;
-  border-radius: 4px;
-}
-
-.cancel-button {
-  border: 1px solid #dcdfe6;
-  color: #606266;
-}
-
-.confirm-button {
-  background-color: #409eff;
-  border-color: #409eff;
+  :deep(.config-dialog .el-form-item__label) {
+    text-align: left;
+    padding-bottom: 5px;
+    display: block;
+  }
 }
 
 .no-permission-container {
@@ -1016,3 +1177,5 @@ const goToHome = () => {
   font-size: 16px;
 }
 </style>
+
+

@@ -178,13 +178,13 @@
           </template>
         </el-table-column>
 
-        <el-table-column prop="create_time" label="创建时间" width="160">
+        <el-table-column prop="create_time" label="创建时间" width="170">
           <template #default="scope">
             <span class="time-text">{{ formatTime(scope.row.create_time) }}</span>
           </template>
         </el-table-column>
 
-        <el-table-column prop="update_time" label="更新时间" width="160">
+        <el-table-column prop="update_time" label="更新时间" width="170">
           <template #default="scope">
             <span class="time-text">{{ formatTime(scope.row.update_time) }}</span>
           </template>
@@ -348,17 +348,42 @@
                 @change="handleRuleTypeChange"
                 class="rule-type-group"
               >
-                <el-radio label="all">所有值(*)</el-radio>
-                <el-radio label="range">范围执行(a-b)</el-radio>
-                <el-radio label="interval">间隔执行(a/b)</el-radio>
-                <el-radio label="specific">指定值(a,b,c)</el-radio>
-                <el-radio label="none">不指定(?) - 仅用于日/周</el-radio>
+                <el-radio label="all" value="all">所有值(*)</el-radio>
+                <el-radio label="range" value="range">范围执行(a-b)</el-radio>
+                <el-radio
+                  label="interval"
+                  value="interval"
+                  v-if="activeTimeDimension !== 'dayOfWeek'">
+                  间隔执行(a/b)
+                </el-radio>
+                <el-radio label="specific" value="specific">指定值(a,b,c)</el-radio>
+                <el-radio
+                  label="none"
+                  value="none"
+                  v-if="['day', 'dayOfWeek'].includes(activeTimeDimension)">
+                  不指定(?) - 仅用于日/周
+                </el-radio>
               </el-radio-group>
+
 
               <!-- 范围执行配置 -->
               <div v-if="cronForm[activeTimeDimension].type === 'range'" class="config-fields">
-                <el-form-item label="从" size="small">
+                <el-form-item
+                  :label="activeTimeDimension === 'dayOfWeek' ? '从' : '从'"
+                  size="small">
+                  <el-select
+                    v-if="activeTimeDimension === 'dayOfWeek'"
+                    v-model="cronForm[activeTimeDimension].rangeStart"
+                    @change="updateCronExpression" style="width: 90px">
+                    <el-option
+                      v-for="option in getDimensionOptions(activeTimeDimension)"
+                      :key="option.value"
+                      :label="numberToWeekDay(parseInt(option.value))"
+                      :value="parseInt(option.value)"
+                    />
+                  </el-select>
                   <el-input-number
+                    v-else
                     v-model="cronForm[activeTimeDimension].rangeStart"
                     :min="dimensionRanges[activeTimeDimension].min"
                     :max="dimensionRanges[activeTimeDimension].max"
@@ -366,16 +391,34 @@
                   />
                 </el-form-item>
                 <span class="separator">-</span>
-                <el-form-item label="到" size="small">
+                <el-form-item
+                  :label="activeTimeDimension === 'dayOfWeek' ? '到' : '到'"
+                  size="small">
+                  <el-select
+                    v-if="activeTimeDimension === 'dayOfWeek'"
+                    v-model="cronForm[activeTimeDimension].rangeEnd"
+                    @change="updateCronExpression" style="width: 90px">
+                    <el-option
+                      v-for="option in getDimensionOptions(activeTimeDimension)"
+                      :key="option.value"
+                      :label="numberToWeekDay(parseInt(option.value))"
+                      :value="parseInt(option.value)"
+                    />
+                  </el-select>
                   <el-input-number
+                    v-else
                     v-model="cronForm[activeTimeDimension].rangeEnd"
                     :min="dimensionRanges[activeTimeDimension].min"
                     :max="dimensionRanges[activeTimeDimension].max"
                     @change="updateCronExpression"
                   />
                 </el-form-item>
-                <span class="unit">{{ dimensionUnits[activeTimeDimension] }}</span>
+                <span class="unit">{{
+                    activeTimeDimension === 'dayOfWeek' ?
+                      '' : dimensionUnits[activeTimeDimension]
+                  }}</span>
               </div>
+
 
               <!-- 间隔执行配置 -->
               <div v-if="cronForm[activeTimeDimension].type === 'interval'" class="config-fields">
@@ -422,7 +465,12 @@
                    class="config-desc">
                 {{
                   cronForm[activeTimeDimension].type === 'all' ?
-                    '每分钟/时/日等都会执行' :
+                    (activeTimeDimension === 'second' ? '每秒都会执行' :
+                      activeTimeDimension === 'minute' ? '每分钟都会执行' :
+                        activeTimeDimension === 'hour' ? '每小时都会执行' :
+                          activeTimeDimension === 'day' ? '每天都会执行' :
+                            activeTimeDimension === 'month' ? '每月都会执行' :
+                              activeTimeDimension === 'dayOfWeek' ? '每周都会执行' : '都会执行') :
                     '不指定具体值（仅用于日和周的互斥场景）'
                 }}
               </div>
@@ -845,7 +893,7 @@ import {nextTick, onBeforeMount, onMounted, reactive, ref, watch} from 'vue'
 import {useRoute} from 'vue-router'
 import {CronExpressionParser} from 'cron-parser';
 import {ElEmpty, ElMessage, ElMessageBox} from 'element-plus'
-import { Edit, VideoPlay, Operation, Delete } from '@element-plus/icons-vue'
+import {Edit, VideoPlay, Operation, Delete} from '@element-plus/icons-vue'
 import {Plus, Refresh, Search, Check, InfoFilled, CloseBold} from '@element-plus/icons-vue'
 import {
   createTestPlan,
@@ -971,9 +1019,8 @@ const dimensionRanges = {
   hour: {min: 0, max: 23},
   day: {min: 1, max: 31},
   month: {min: 1, max: 12},
-  dayOfWeek: {min: 0, max: 6} // 0=周日，6=周六
+  dayOfWeek: {min: 0, max: 6} // 0=周一，1=周二，2=周三，3=周四，4=周五，5=周六，6=周日
 };
-
 
 // Cron表单配置（对应vcrontab的配置模式）
 const cronForm = reactive({
@@ -1039,7 +1086,8 @@ const getDimensionOptions = (dimension) => {
   const {min, max} = dimensionRanges[dimension];
 
   if (dimension === 'dayOfWeek') {
-    const weekLabels = ['周日(0)', '周一(1)', '周二(2)', '周三(3)', '周四(4)', '周五(5)', '周六(6)'];
+    // 按照你提供的映射：0=周一, 1=周二, 2=周三, 3=周四, 4=周五, 5=周六, 6=周日
+    const weekLabels = ['周一(0)', '周二(1)', '周三(2)', '周四(3)', '周五(4)', '周六(5)', '周日(6)'];
     for (let i = min; i <= max; i++) {
       options.push({value: i.toString(), label: weekLabels[i]});
     }
@@ -1056,22 +1104,39 @@ const getDimensionOptions = (dimension) => {
   return options;
 };
 
+
+// 数字到中文星期的映射
+const numberToWeekDay = (num) => {
+  const weekDays = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
+  return weekDays[num] || '';
+};
+
+
 // 维度切换处理
 const handleDimensionChange = (dimension) => {
-  // 日和周互斥提示
+  // 日和周互斥提示和自动设置
   if (dimension === 'day' && cronForm.dayOfWeek.type !== 'none') {
+    // 切换到日时，自动将周设为不指定
+    cronForm.dayOfWeek.type = 'none';
     ElMessage.warning({
-      message: '日和周通常不同时指定，建议周设置为"不指定"',
+      message: '日和周不能同时指定，已将周设置为"不指定"',
       duration: 8000 // 8秒
     });
+    // 更新Cron表达式
+    updateCronExpression();
   }
   if (dimension === 'dayOfWeek' && cronForm.day.type !== 'none') {
+    // 切换到周时，自动将日设为不指定
+    cronForm.day.type = 'none';
     ElMessage.warning({
-      message: '周和日通常不同时指定，建议日设置为"不指定"',
+      message: '周和日不能同时指定，已将日设置为"不指定"',
       duration: 8000 // 8秒
     });
+    // 更新Cron表达式
+    updateCronExpression();
   }
 };
+
 
 // 规则类型变更处理
 const handleRuleTypeChange = () => {
@@ -1101,27 +1166,79 @@ const parseCronToForm = () => {
       cronForm[dimension].type = 'none';
     } else if (part.includes('-')) {
       const [start, end] = part.split('-');
-      cronForm[dimension].type = 'range';
-      cronForm[dimension].rangeStart = parseInt(start);
-      cronForm[dimension].rangeEnd = parseInt(end);
+
+      // 如果是周字段，需要根据映射进行转换
+      if (dimension === 'dayOfWeek') {
+        let s = parseInt(start);
+        let e = parseInt(end);
+
+        // 将Cron标准的0=周日,1-6=周一到周六转换为你需要的0=周一,1=周二,...,6=周日
+        if (s === 0) s = 6; // 周日转为6
+        else s = s - 1;      // 其他天减1
+
+        if (e === 0) e = 6;  // 周日转为6
+        else e = e - 1;      // 其他天减1
+
+        cronForm[dimension].type = 'range';
+        cronForm[dimension].rangeStart = s;
+        cronForm[dimension].rangeEnd = e;
+      } else {
+        cronForm[dimension].type = 'range';
+        cronForm[dimension].rangeStart = parseInt(start);
+        cronForm[dimension].rangeEnd = parseInt(end);
+      }
     } else if (part.includes('/')) {
       const [start, step] = part.split('/');
-      cronForm[dimension].type = 'interval';
-      cronForm[dimension].intervalStart = start === '*' ? dimensionRanges[dimension].min : parseInt(start);
-      cronForm[dimension].intervalStep = parseInt(step);
+
+      // 如果是周字段，需要根据映射进行转换
+      if (dimension === 'dayOfWeek') {
+        let s = start === '*' ? dimensionRanges[dimension].min : parseInt(start);
+
+        // 转换逻辑
+        if (s === 0) s = 6; // 周日转为6
+        else s = s - 1;      // 其他天减1
+
+        cronForm[dimension].type = 'interval';
+        cronForm[dimension].intervalStart = s;
+        cronForm[dimension].intervalStep = parseInt(step);
+      } else {
+        cronForm[dimension].type = 'interval';
+        cronForm[dimension].intervalStart = start === '*' ? dimensionRanges[dimension].min : parseInt(start);
+        cronForm[dimension].intervalStep = parseInt(step);
+      }
     } else if (part.includes(',')) {
+      // 处理逗号分隔的多个值
+      let values = part.split(',').map(v => parseInt(v));
+
+      // 如果是周字段，需要根据映射进行转换
+      if (dimension === 'dayOfWeek') {
+        values = values.map(v => {
+          if (v === 0) return 6; // 周日转为6
+          return v - 1;           // 其他天减1
+        });
+      }
+
       cronForm[dimension].type = 'specific';
-      cronForm[dimension].specificValues = part.split(',');
+      cronForm[dimension].specificValues = values;
     } else {
       // 单个值视为指定值
+      let value = parseInt(part);
+
+      // 如果是周字段，需要根据映射进行转换
+      if (dimension === 'dayOfWeek') {
+        if (value === 0) value = 6; // 周日转为6
+        else value = value - 1;      // 其他天减1
+      }
+
       cronForm[dimension].type = 'specific';
-      cronForm[dimension].specificValues = [part];
+      cronForm[dimension].specificValues = [value];
     }
   });
 
   // 更新执行时间预览
   updateExecutionTimes();
 };
+
 
 // 根据表单生成Cron表达式
 const updateCronExpression = () => {
@@ -1158,30 +1275,109 @@ const updateExecutionTimes = () => {
   if (!planForm.schedule_cron_expression) return;
 
   try {
-    // 使用默认导入的 CronExpressionParser
-    const interval = CronExpressionParser.parse(planForm.schedule_cron_expression, {
+    // 将Cron表达式中的星期字段转换为标准格式（0=周日, 1=周一, ..., 6=周六）
+    const cronParts = planForm.schedule_cron_expression.trim().split(/\s+/);
+
+    // 如果是5位格式，扩展为6位
+    let parts = cronParts.length === 6 ? [...cronParts] : ['0', ...cronParts];
+
+    // 处理星期字段（第6位，索引为5）
+    if (parts.length >= 6) {
+      let dayOfWeekPart = parts[5];
+
+      // 处理不同格式的星期字段
+      if (dayOfWeekPart.includes(',')) {
+        // 多个值：0,1,2 -> 转换为标准格式
+        const values = dayOfWeekPart.split(',').map(v => {
+          const num = parseInt(v);
+          // 你的映射：0=周一, 1=周二, ..., 6=周日
+          // 标准映射：0=周日, 1=周一, ..., 6=周六
+          // 转换逻辑：(num + 1) % 7
+          return (num + 1) % 7;
+        });
+        parts[5] = values.join(',');
+      } else if (dayOfWeekPart.includes('-')) {
+        // 范围：4-6 -> 转换为标准格式
+        const [start, end] = dayOfWeekPart.split('-').map(v => parseInt(v));
+        // 转换为标准格式
+        const stdStart = (start + 1) % 7;
+        const stdEnd = (end + 1) % 7;
+        // 处理跨越周日的情况
+        if (stdStart <= stdEnd) {
+          parts[5] = `${stdStart}-${stdEnd}`;
+        } else {
+          // 例如：原为4-6(周五到周日)，转为标准格式后变成5-0，需特殊处理
+          // 由于标准格式中0是周日，6是周六，所以4-6(周五到周日)应为4,5,6
+          // 实际上应该生成一系列离散值
+          const days = [];
+          for (let i = start; i <= end; i++) {
+            days.push((i + 1) % 7);
+          }
+          parts[5] = days.join(',');
+        }
+      } else if (dayOfWeekPart.includes('/')) {
+        // 间隔：暂时保持不变，但需要注意转换
+        const [base, interval] = dayOfWeekPart.split('/');
+        if (base !== '*') {
+          const baseNum = base === '?' ? '?' : (parseInt(base) + 1) % 7;
+          parts[5] = `${baseNum}/${interval}`;
+        }
+      } else if (dayOfWeekPart !== '*' && dayOfWeekPart !== '?') {
+        // 单个值：4 -> 转换为标准格式
+        const num = parseInt(dayOfWeekPart);
+        parts[5] = ((num + 1) % 7).toString();
+      }
+    }
+
+    const standardCronExpression = parts.join(' ');
+
+    // 使用标准格式的Cron表达式进行解析
+    const interval = CronExpressionParser.parse(standardCronExpression, {
       currentDate: new Date(),
-      tz: 'Asia/Shanghai'
+      tz: 'Asia/Shanghai' // 设置为上海时区
     });
 
     // 获取最近5次执行时间
     for (let i = 0; i < 5; i++) {
       const next = interval.next();
-      executionTimes.value.push(next.toDate().toLocaleString('zh-CN', {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-        timeZone: 'Asia/Shanghai'
-      }));
+      const date = next.toDate();
+
+      // 获取星期几（0=周日, 1=周一, ..., 6=周六）
+      let jsDayOfWeek = date.getDay(); // JavaScript默认的getDay()返回0-6 (周日到周六)
+
+      // 将JavaScript的星期映射转换为你的应用标准显示
+      // JavaScript: 0=周日, 1=周一, 2=周二, 3=周三, 4=周四, 5=周五, 6=周六
+      // 你的应用: 0=周一, 1=周二, 2=周三, 3=周四, 4=周五, 5=周六, 6=周日
+      let appDayOfWeek;
+      if (jsDayOfWeek === 0) {
+        appDayOfWeek = 6; // 周日对应你的应用的6
+      } else {
+        appDayOfWeek = jsDayOfWeek - 1; // 其他天减1
+      }
+
+      // 对应中文星期显示
+      const weekDays = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
+      const dayName = weekDays[appDayOfWeek];
+
+      executionTimes.value.push(
+        date.toLocaleString('zh-CN', {
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          timeZone: 'Asia/Shanghai'
+        }) + ` (${dayName})`
+      );
     }
   } catch (error) {
     console.error('解析Cron表达式失败:', error);
     executionTimes.value = ['Cron表达式格式错误'];
   }
 };
+
+
 
 // 初始化Cron表单
 const initCronForm = () => {
@@ -2234,7 +2430,7 @@ const handleCaseCurrentChange = (val) => {
 .filter-actions {
   display: flex;
   gap: 12px;
-  height: 100%;
+  height: 90%;
   align-items: center;
   padding-left: 20px;
 }
@@ -2472,7 +2668,6 @@ const handleCaseCurrentChange = (val) => {
   font-size: 15px;
   padding: 10px 14px;
   border-radius: 8px;
-  border: 1px solid rgba(235, 238, 245, 0.8);
 }
 
 :deep(.el-pagination .el-pagination__jump .el-input .el-input__inner) {
@@ -3419,12 +3614,18 @@ const handleCaseCurrentChange = (val) => {
   color: #606266;
   white-space: nowrap;
   align-self: center;
+  display: flex;
+  align-items: center;
+  padding-bottom: 20px;
 }
 
 .unit {
   color: #606266;
   white-space: nowrap;
   align-self: center;
+  display: flex;
+  align-items: center;
+  padding-bottom: 20px;
 }
 
 .cron-preview {
@@ -3550,7 +3751,16 @@ const handleCaseCurrentChange = (val) => {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05) !important;
 }
 
+/* 统一设置选择器和输入框的圆角 */
+:deep(.el-input__wrapper),
+:deep(.el-select__wrapper) {
+  border-radius: 12px !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05) !important;
+  border: 1px solid rgba(235, 238, 245, 0.5) !important;
+  transition: all 0.3s ease;
+}
 </style>
+
 
 
 

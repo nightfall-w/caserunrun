@@ -34,7 +34,7 @@
             <!-- 工作空间 -->
             <el-menu-item :index="'/workspace/' + workspaceId" v-if="workspaceId">
               <el-icon class="text-lg">
-                <Film/>
+                <House/>
               </el-icon>
               <span v-if="!isCollapse">概览</span>
             </el-menu-item>
@@ -42,7 +42,7 @@
             <el-menu-item :index="'/workspace/' + workspaceId+ '/case-source-manage'"
                           v-if="workspaceId">
               <el-icon class="text-lg">
-                <Film/>
+                <FolderOpened/>
               </el-icon>
               <span v-if="!isCollapse">代码仓库</span>
             </el-menu-item>
@@ -50,7 +50,7 @@
             <el-menu-item :index="'/workspace/' + workspaceId +'/test-case-list'"
                           v-if="workspaceId">
               <el-icon class="text-lg">
-                <Film/>
+                <Document/>
               </el-icon>
               <span v-if="!isCollapse">用例列表</span>
             </el-menu-item>
@@ -58,7 +58,7 @@
             <el-menu-item :index="'/workspace/' + workspaceId +'/test-plan-list'"
                           v-if="workspaceId">
               <el-icon class="text-lg">
-                <Film/>
+                <Memo/>
               </el-icon>
               <span v-if="!isCollapse">测试计划</span>
             </el-menu-item>
@@ -66,7 +66,7 @@
             <el-menu-item :index="'/workspace/' + workspaceId +'/test-task-list'"
                           v-if="workspaceId">
               <el-icon class="text-lg">
-                <Film/>
+                <TrendCharts/>
               </el-icon>
               <span v-if="!isCollapse">测试任务</span>
             </el-menu-item>
@@ -74,7 +74,7 @@
             <el-menu-item :index="'/workspace/' + workspaceId +'/workspace-config'"
                           v-if="workspaceId && isWorkspaceAdmin">
               <el-icon class="text-lg">
-                <Film/>
+                <Setting/>
               </el-icon>
               <span v-if="!isCollapse">设置</span>
             </el-menu-item>
@@ -95,12 +95,12 @@
 import {ref, computed, onMounted} from 'vue'
 import {useRoute} from 'vue-router'
 import {
-  Film,
+  House,
+  FolderOpened,
   Document,
-  Grid,
-  DataAnalysis,
-  List,
-  Reading,
+  Memo,
+  TrendCharts,
+  Setting,
   Expand,
   Fold
 } from '@element-plus/icons-vue'

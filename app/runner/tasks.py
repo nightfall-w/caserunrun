@@ -18,7 +18,9 @@ from app.core.database import get_sync_db
 from app.core.redis import get_redis_cache
 from app.runner.pytest_runner import PytestCaseRunner, create_error_html_report_file
 from app.runner.testng_runner import TestNGCaseRunner
-from app.testplan.models import CaseType, TestTaskModel, TaskJobModel, JobStatus, TaskStatus
+from app.testplan.controller import get_test_plan_crud
+from app.testplan.models import CaseType, TestTaskModel, TaskJobModel, JobStatus, TaskStatus, ExecutionMode
+from utils.commonlib import now
 from utils.custom_logging import logger
 
 
@@ -27,6 +29,114 @@ class BaseBoosterParams(BoosterParams):
     max_retry_times: int = 0
     concurrent_mode: str = ConcurrentModeEnum.THREADING
     is_auto_start_consuming_message: bool = False
+
+
+@boost(BaseBoosterParams(
+    queue_name='trigger_testplan',
+    qps=50,
+    concurrent_num=500,
+    function_timeout=5
+))
+def trigger_testplan(test_plan_id: int, trigger_user: str) -> bool:
+    """触发测试计划"""
+    db = next(get_sync_db())
+    curd = get_test_plan_crud(db)
+    test_plan = curd.get_test_plan_by_id(test_plan_id)
+    if not test_plan:
+        raise Exception(f"测试计划id：{test_plan_id} 不存在")
+
+    # 获取所有关联的用例
+    associated_cases, invalid_cases = curd.get_test_cases_by_plan_id(test_plan_id)
+    test_plan.total_case_count = len(associated_cases)
+
+    # 有效的用例
+    valid_cases = []
+
+    for case in associated_cases:
+        if case['case_type'] == CaseType.PYTEST:
+            pytest_case = curd.db.query(PytestCaseModel).filter(
+                PytestCaseModel.case_uuid == case['case_uuid']
+            ).first()
+            if not pytest_case:
+                continue
+            valid_cases.append(pytest_case)
+        elif case['case_type'] == CaseType.TESTNG:
+            testng_case = curd.db.query(TestNGCaseModel).filter(
+                TestNGCaseModel.case_uuid == case['case_uuid']
+            ).first()
+            if not testng_case:
+                continue
+            valid_cases.append(testng_case)
+
+    if not valid_cases:
+        raise Exception("当前测试计划下没有有效的用例可以执行")
+
+    # 创建测试任务task
+    task = TestTaskModel(workspace_id=test_plan.workspace_id,
+                         test_plan_id=test_plan_id,
+                         task_name=test_plan.plan_name,
+                         fail_stop=test_plan.fail_stop,
+                         task_execution_mode=test_plan.execution_mode,
+                         test_environment=test_plan.test_environment,
+                         task_status=TaskStatus.PENDING,
+                         create_user=trigger_user,
+                         task_result={
+                             "total_case_count": len(valid_cases),
+                             "finished_case_count": 0
+                         },
+                         create_time=now(),
+                         update_time=now()
+                         )
+    curd.db.add(task)
+    curd.db.commit()
+    task_id = task.id
+
+    # 创建测试任务taskJob
+    for case in valid_cases:
+        job = TaskJobModel(workspace_id=test_plan.workspace_id,
+                           task_id=task_id,
+                           test_plan_id=test_plan_id,
+                           case_name=case.case_name,
+                           case_uuid=case.case_uuid,
+                           case_type=case.case_type,
+                           case_function_list=case.case_function_list,
+                           job_status=JobStatus.PENDING,
+                           case_path=case.case_path,
+                           case_package=case.case_package,
+                           create_time=now(),
+                           update_time=now(),
+                           time_consuming=0
+                           )
+        curd.db.add(job)
+        curd.db.commit()
+        test_plan.pending_task_count += 1
+        curd.db.commit()
+
+    if task.task_execution_mode == ExecutionMode.SERIAL:
+        case_task_executor.push(
+            task_id=task_id,
+            workspace_id=test_plan.workspace_id,
+            plan_id=test_plan_id,
+        )
+    elif task.task_execution_mode == ExecutionMode.PARALLEL:
+        case_jobs = curd.db.query(TaskJobModel).filter(
+            TaskJobModel.task_id == task_id
+        )
+        for case_job in case_jobs:
+            if case_job.case_type == CaseType.PYTEST:
+                pytest_case_job_executor.push(
+                    task_id=task_id,
+                    workspace_id=test_plan.workspace_id,
+                    plan_id=test_plan_id,
+                    job_id=case_job.id
+                )
+            elif case_job.case_type == CaseType.TESTNG:
+                testng_case_job_executor.push(
+                    task_id=task_id,
+                    workspace_id=test_plan.workspace_id,
+                    plan_id=test_plan_id,
+                    job_id=case_job.id
+                )
 
 
 def ui_json_2_dict(ui_json: str):

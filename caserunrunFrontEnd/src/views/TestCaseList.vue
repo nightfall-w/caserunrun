@@ -15,9 +15,15 @@
             v-model="searchForm.git_project_id"
             placeholder="请选择项目"
             clearable
-            size="small" style="width: 100%"
+            size="default"
             @change="handleSearch"
+            class="filter-input"
           >
+            <template #prefix>
+              <el-icon>
+                <FolderOpened/>
+              </el-icon>
+            </template>
             <el-option
               v-for="project in projectOptions"
               :key="project.value"
@@ -33,9 +39,15 @@
             v-model="searchForm.case_type"
             placeholder="用例类型"
             clearable
-            size="small" style="width: 100%"
+            size="default"
             @change="handleSearch"
+            class="filter-input"
           >
+            <template #prefix>
+              <el-icon>
+                <Files/>
+              </el-icon>
+            </template>
             <el-option label="Pytest" value="pytest"/>
             <el-option label="TestNG" value="testng"/>
           </el-select>
@@ -47,9 +59,15 @@
             v-model="searchForm.specific_type"
             placeholder="测试类型"
             clearable
-            size="small" style="width: 100%"
+            size="default"
             @change="handleSearch"
+            class="filter-input"
           >
+            <template #prefix>
+              <el-icon>
+                <Monitor/>
+              </el-icon>
+            </template>
             <el-option label="Web" :value="10"/>
             <el-option label="H5" :value="11"/>
             <el-option label="接口" :value="12"/>
@@ -62,9 +80,15 @@
             v-model="searchForm.case_level"
             placeholder="用例等级"
             clearable
-            size="small" style="width: 100%"
+            size="default"
             @change="handleSearch"
+            class="filter-input"
           >
+            <template #prefix>
+              <el-icon>
+                <Star/>
+              </el-icon>
+            </template>
             <el-option label="S0" :value="0"/>
             <el-option label="S1" :value="1"/>
             <el-option label="S2" :value="2"/>
@@ -78,9 +102,16 @@
             v-model="searchForm.case_name"
             placeholder="用例名称"
             clearable
-            size="small"
+            size="default"
             @keyup.enter="handleSearch"
-          />
+            class="filter-input"
+          >
+            <template #prefix>
+              <el-icon>
+                <Search/>
+              </el-icon>
+            </template>
+          </el-input>
         </el-col>
 
         <!-- 用例路径 -->
@@ -89,9 +120,16 @@
             v-model="searchForm.case_path"
             placeholder="用例路径"
             clearable
-            size="small"
+            size="default"
             @keyup.enter="handleSearch"
-          />
+            class="filter-input"
+          >
+            <template #prefix>
+              <el-icon>
+                <Document/>
+              </el-icon>
+            </template>
+          </el-input>
         </el-col>
 
         <!-- 作者 -->
@@ -100,23 +138,30 @@
             v-model="searchForm.case_author"
             placeholder="作者"
             clearable
-            size="small"
+            size="default"
             @keyup.enter="handleSearch"
-          />
+            class="filter-input"
+          >
+            <template #prefix>
+              <el-icon>
+                <User/>
+              </el-icon>
+            </template>
+          </el-input>
         </el-col>
 
         <!-- 按钮区 -->
         <el-col :xs="24" :sm="12" :md="5" :lg="4">
           <div class="filter-actions">
-            <el-button type="primary" @click="handleSearch" :loading="loading" size="small"
+            <el-button type="primary" @click="handleSearch" :loading="loading" size="default"
                        class="search-btn">
-              <el-icon :size="14" class="icon">
+              <el-icon :size="16" class="icon">
                 <Search/>
               </el-icon>
               搜索
             </el-button>
-            <el-button @click="handleReset" size="small" class="reset-btn">
-              <el-icon :size="14" class="icon">
+            <el-button @click="handleReset" size="default" class="reset-btn">
+              <el-icon :size="16" class="icon">
                 <Refresh/>
               </el-icon>
               重置
@@ -204,7 +249,7 @@
           </template>
         </el-table-column>
 
-        <el-table-column prop="update_time" label="上次同步" width="160">
+        <el-table-column prop="update_time" label="上次同步" width="170">
           <template #default="scope">
             <span class="time-text">{{ formatTime(scope.row.update_time) }}</span>
           </template>
@@ -236,7 +281,6 @@
           @size-change="handleSizeChange"
           @current-change="handleCurrentChange"
           class="pagination"
-          size="small"
         />
       </div>
     </div>
@@ -498,7 +542,11 @@ import {
   Memo,
   Refresh,
   Search,
-  User
+  User,
+  Files,
+  Monitor,
+  Star,
+  FolderOpened
 } from '@element-plus/icons-vue'
 import {getCaseSourceList, getTestCaseContentDetail, getTestCaseList} from '@/network/api.js'
 import hljs from 'highlight.js/lib/core';
@@ -863,44 +911,48 @@ const getFileNameFromPath = (path) => {
 <style scoped>
 /* 基础容器样式 */
 .test-case-list-container {
-  padding: 5px;
+  padding: 10px 10px 0 10px;
   background-color: #f5f7fa;
   min-height: 100%;
   display: flex;
   flex-direction: column;
   height: calc(100vh - 60px);
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
+/* 页面头部样式 */
 .page-header {
   background: white;
-  padding: 10px 15px;
-  margin-bottom: 10px;
-  border-radius: 6px;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+  padding: 15px 20px;
+  margin-bottom: 15px;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
   border: 1px solid #ebeef5;
   flex-shrink: 0;
 }
 
 .page-header h1 {
-  margin: 0 0 5px 0;
-  font-size: 18px;
-  color: #303133;
-  font-weight: 600;
+  margin: 0 0 6px 0;
+  font-size: 20px;
+  color: #2c3e50;
+  font-weight: 700;
 }
 
 .page-header p {
   margin: 0;
-  color: #918c8c;
-  font-size: 12px;
+  color: #7f8c8d;
+  font-size: 14px;
 }
 
 /* 筛选区样式 */
 .filter-container {
   background: white;
-  padding: 15px;
+  padding: 15px 20px;
   margin-bottom: 15px;
-  border-radius: 8px;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  border: 1px solid #ebeef5;
   flex-shrink: 0;
 }
 
@@ -908,20 +960,35 @@ const getFileNameFromPath = (path) => {
   margin-bottom: 0;
 }
 
-:deep(.el-col-lg-3 .el-select),
-:deep(.el-col-md-4 .el-select) {
-  width: 100% !important;
+.filter-input {
+  width: 100%;
 }
 
-:deep(.el-col-lg-3 .el-input__inner),
-:deep(.el-col-md-4 .el-input__inner) {
-  padding: 0 10px;
-  font-size: 12px;
+:deep(.el-input__wrapper) {
+  border-radius: 12px !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05) !important;
+  border: 1px solid rgba(235, 238, 245, 0.5) !important;
+  transition: all 0.3s ease;
+}
+
+:deep(.el-input__wrapper):hover {
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1) !important;
+  border-color: #c0c4cc !important;
+}
+
+:deep(.el-input__wrapper.is-focus) {
+  box-shadow: 0 6px 16px rgba(102, 126, 234, 0.2) !important;
+  border-color: #667eea !important;
+}
+
+:deep(.el-select .el-input__wrapper) {
+  border-radius: 12px !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05) !important;
 }
 
 .filter-actions {
   display: flex;
-  gap: 1px;
+  gap: 12px;
   height: 100%;
   align-items: center;
   padding-left: 20px;
@@ -929,34 +996,50 @@ const getFileNameFromPath = (path) => {
 
 .search-btn {
   flex: 1;
-  background: #409eff;
-  border-color: #409eff;
-  transition: all 0.2s ease;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: none;
+  transition: all 0.3s ease;
+  border-radius: 12px;
+  font-weight: 600;
+  height: 42px;
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
 }
 
 .search-btn:hover {
-  background: #66b1ff;
-  border-color: #66b1ff;
+  background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+  transform: translateY(-3px);
+  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.6);
 }
 
 .reset-btn {
   flex: 1;
-  transition: all 0.2s ease;
+  background: #f4f4f5;
+  border: 1px solid #dcdfe6;
+  color: #606266;
+  transition: all 0.3s ease;
+  border-radius: 12px;
+  font-weight: 600;
+  height: 42px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 }
 
 .reset-btn:hover {
-  background: #f0f2f5;
+  background: #e6e6e6;
+  border-color: #c0c4cc;
+  transform: translateY(-3px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
 }
 
 .icon {
-  margin-right: 4px;
+  margin-right: 8px;
 }
 
-/* 表格容器 */
+/* 表格容器样式 */
 .table-container {
   background: white;
-  border-radius: 8px;
-  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.06);
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  border: 1px solid #ebeef5;
   overflow: hidden;
   flex: 1;
   display: flex;
@@ -968,42 +1051,74 @@ const getFileNameFromPath = (path) => {
   border: none;
   flex: 1;
   overflow: auto;
-  font-size: 13px;
+  font-size: 15px;
   border-collapse: separate;
 }
 
 /* 表头样式 */
 :deep(.table-header th) {
-  background: linear-gradient(180deg, #e2e8f0 0%, #cbd5e0 100%) !important;
-  color: #1e293b !important;
-  font-weight: 600 !important;
-  font-size: 12px !important;
-  padding: 10px 0 !important;
-  border-bottom: 1px solid #cbd5e1 !important;
+  background: #f8fafc !important;
+  color: #2c3e50 !important;
+  font-weight: 700 !important;
+  font-size: 15px !important;
+  padding: 18px 0 !important;
+  border-bottom: 1px solid rgba(235, 238, 245, 0.5) !important;
   position: relative;
+  text-align: center !important;
 }
 
-/* 简化hover效果，使用box-shadow替代伪元素 */
+:deep(.table-header th):first-child {
+  border-top-left-radius: 12px;
+}
+
+:deep(.table-header th):last-child {
+  border-top-right-radius: 12px;
+}
+
 :deep(.table-header th:hover) {
-  box-shadow: inset 0 -2px 0 #679ae5;
+  background: #edf2f7 !important;
 }
 
 /* 表格行样式 */
 .table-row td {
-  color: #334155;
-  transition: all 0.25s ease;
-  font-size: 13px;
+  color: #34495e;
+  transition: all 0.3s ease;
+  font-size: 15px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.table-row td::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  z-index: -1;
 }
 
 .table-row:hover td {
-  background-color: #f0f7ff !important;
-  color: #1e40af;
+  background-color: transparent !important;
+  color: #2c3e50;
+  transform: scale(1.02);
+}
+
+.table-row:hover td::before {
+  opacity: 1;
 }
 
 .id-text {
-  font-weight: 400;
-  color: #1e40af;
-  font-size: 11px;
+  font-weight: 700;
+  color: #667eea;
+  font-size: 14px;
+  padding: 4px 10px;
+  background: rgba(102, 126, 234, 0.1);
+  border-radius: 20px;
 }
 
 .case-name-text {
@@ -1013,128 +1128,108 @@ const getFileNameFromPath = (path) => {
   text-overflow: ellipsis;
   white-space: nowrap;
   vertical-align: bottom;
-  color: unset;
-  font-weight: 400;
-  transition: all 0.2s ease;
-  padding: 2px 4px;
-  border-radius: 2px;
+  color: #2c3e50;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  padding: 6px 12px;
+  border-radius: 8px;
+  background: rgba(102, 126, 234, 0.05);
 }
 
 .case-name-text:hover {
-  color: #04288c;
-  background-color: rgba(59, 130, 246, 0.1);
+  color: #667eea;
+  background-color: rgba(102, 126, 234, 0.15);
+  transform: translateX(5px);
 }
 
-.time-text {
-  color: #64748b;
-  font-size: 12px;
+.time-text,
+.creator-text {
+  color: #7f8c8d;
+  font-size: 14px;
 }
 
 /* 标签样式 */
 :deep(.case-type-tag),
 :deep(.specific-type-tag),
 :deep(.level-tag) {
-  font-size: 12px;
-  padding: 3px 10px;
-  border-radius: 12px;
+  font-size: 13px;
+  border-radius: 24px;
   border: none;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  transition: all 0.2s ease;
-}
-
-:deep(.case-type-tag) {
-  background-color: rgba(64, 158, 255, 0.15);
-  color: #409eff;
-}
-
-:deep(.specific-type-tag) {
-  background-color: rgba(103, 194, 58, 0.15);
-  color: #67c23a;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+  font-weight: 600;
 }
 
 :deep(.case-type-tag:hover),
 :deep(.specific-type-tag:hover),
 :deep(.level-tag:hover) {
-  transform: translateY(-1px);
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
+  transform: translateY(-3px) scale(1.05);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
 }
 
-/* 操作按钮 */
+/* 操作按钮样式 */
 .operation-btn {
-  color: #3b82f6 !important;
-  padding: 3px 5px !important;
-  font-size: 13px !important;
-  font-weight: 400 !important;
-  transition: all 0.2s ease !important;
-  border-radius: 4px !important;
+  color: #667eea !important;
+  padding: 6px 6px !important;
+  font-size: 14px !important;
+  font-weight: 500 !important;
+  transition: all 0.3s ease !important;
+  border-radius: 8px !important;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
 }
 
 .operation-btn:hover {
-  color: #1d4ed8 !important;
-  background-color: rgba(59, 130, 246, 0.1) !important;
+  color: #5a6fd8 !important;
+  background-color: rgba(102, 126, 234, 0.1) !important;
+  transform: translateY(-2px) scale(1.05);
+  box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
 }
 
 /* 分页样式 */
 .pagination-container {
-  padding: 10px 20px;
+  padding: 20px;
   background: white;
-  border-top: 1px solid #f1f5f9;
+  border-top: 1px solid #ebeef5;
   flex-shrink: 0;
   position: sticky;
   bottom: 0;
   z-index: 10;
   display: flex;
   justify-content: center;
-  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.02);
+  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.05);
+  border-bottom-left-radius: 12px;
+  border-bottom-right-radius: 12px;
 }
 
 :deep(.pagination) {
-  font-size: 13px;
+  font-size: 15px;
 }
 
 :deep(.el-pagination__sizes .el-input .el-input__inner),
 :deep(.el-pagination__jump .el-input .el-input__inner) {
-  font-size: 13px;
-  padding: 5px 10px;
-  border-radius: 4px;
-  border-color: #e2e8f0;
+  font-size: 15px;
+  padding: 10px 14px;
+  border-radius: 8px;
+}
+
+:deep(.el-pagination .el-pagination__jump .el-input .el-input__inner) {
+  width: 100px;
 }
 
 :deep(.el-pagination button) {
-  border-radius: 4px;
-  transition: all 0.2s ease;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+  background: white;
+  border: 1px solid #dcdfe6;
 }
 
 :deep(.el-pagination button:hover) {
   background-color: #f0f7ff;
-  color: #409eff;
+  color: #667eea;
   border-color: #bfdbfe;
 }
 
-/* 响应式布局 - 筛选区 */
-@media (max-width: 1200px) {
-  .filter-container {
-    padding: 12px;
-  }
-}
-
-@media (max-width: 768px) {
-  .filter-container {
-    padding: 10px;
-  }
-
-  .filter-row {
-    display: flex;
-    flex-wrap: wrap;
-  }
-}
-
-/* 抽屉样式（完全重构） */
-.detail-drawer {
-  --el-drawer-bg-color: #f8fafc;
-  --el-drawer-border-radius: 12px 0 0 12px;
-}
-
+/* 抽屉样式保持原有样式 */
 :deep(.detail-drawer .el-drawer__header) {
   display: none; /* 隐藏默认标题栏 */
 }
@@ -1148,17 +1243,16 @@ const getFileNameFromPath = (path) => {
   height: calc(100vh - 120px);
   display: flex;
   flex-direction: column;
-  gap: 0; /* 移除原来的间隙 */
+  gap: 0;
 }
 
-/* 顶部信息栏 */
 .detail-header {
   display: flex;
   flex-direction: column;
   gap: 16px;
   padding-bottom: 16px;
   border-bottom: 1px solid #e2e8f0;
-  margin-bottom: 0; /* 减少底部边距 */
+  margin-bottom: 0;
 }
 
 .detail-title h2 {
@@ -1205,24 +1299,22 @@ const getFileNameFromPath = (path) => {
   transition: all 0.2s ease;
 }
 
-/* 主要内容区网格布局 */
 .detail-grid {
   display: grid;
   grid-template-columns: 320px 1fr;
   gap: 24px;
   flex: 1;
   overflow: hidden;
-  margin-top: 10px; /* 减少顶部边距 */
+  margin-top: 10px;
 }
 
-/* 面板通用样式 */
 .panel-card {
   background: #ffffff;
   border-radius: 12px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
   overflow: hidden;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
-  flex-shrink: 0; /* 防止卡片被压缩 */
+  flex-shrink: 0;
 }
 
 .panel-card:hover {
@@ -1248,10 +1340,9 @@ const getFileNameFromPath = (path) => {
 
 .mt-4 {
   margin-top: 16px;
-  flex-shrink: 0; /* 防止测试信息卡片被压缩 */
+  flex-shrink: 0;
 }
 
-/* 左侧信息面板 */
 .info-panel {
   display: flex;
   flex-direction: column;
@@ -1307,7 +1398,6 @@ const getFileNameFromPath = (path) => {
   font-weight: 500;
 }
 
-
 .mono-text {
   font-family: 'Fira Code', monospace;
   font-size: 13px;
@@ -1317,7 +1407,6 @@ const getFileNameFromPath = (path) => {
   border-radius: 4px;
 }
 
-/* 统计信息网格 */
 .stat-grid {
   padding: 20px;
   display: grid;
@@ -1354,13 +1443,12 @@ const getFileNameFromPath = (path) => {
   color: #f59e0b;
 }
 
-/* 右侧代码面板 */
 .code-panel {
   display: flex;
   flex-direction: column;
   flex: 1;
   overflow: hidden;
-  margin-top: 0; /* 移除顶部边距 */
+  margin-top: 0;
 }
 
 .code-card {
@@ -1377,9 +1465,8 @@ const getFileNameFromPath = (path) => {
   background: linear-gradient(to right, #1e293b, #0f172a);
   color: #e2e8f0;
   border-bottom: 1px solid #334155;
-  padding: 12px 10px; /* 减少垂直内边距 */
+  padding: 12px 10px;
 }
-
 
 .code-card .panel-icon {
   color: #94a3b8;
@@ -1389,7 +1476,7 @@ const getFileNameFromPath = (path) => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0 15px; /* 添加左右内边距 */
+  padding: 0 15px;
 }
 
 .code-actions {
@@ -1413,9 +1500,9 @@ const getFileNameFromPath = (path) => {
   border-color: #3b82f6;
   color: white;
   transition: all 0.2s;
-  padding: 6px 12px; /* 调整内边距 */
+  padding: 6px 12px;
   border-radius: 6px;
-  margin-right: 20px; /* 添加右边距 */
+  margin-right: 20px;
 }
 
 .copy-btn:hover {
@@ -1425,7 +1512,6 @@ const getFileNameFromPath = (path) => {
   box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
 }
 
-/* 行号样式 */
 .code-content :deep(.line-number),
 .fullscreen-code-content :deep(.line-number) {
   display: inline-block;
@@ -1440,7 +1526,6 @@ const getFileNameFromPath = (path) => {
   font-size: 12px;
 }
 
-/* 调整代码内容区域的内边距，为行号留出空间 */
 .code-content-wrapper {
   flex: 1;
   overflow: auto;
@@ -1448,18 +1533,10 @@ const getFileNameFromPath = (path) => {
   position: relative;
 }
 
-
 .code-content {
   display: block;
-  padding: 5px 15px 15px 15px; /* 减少内边距 */
+  padding: 5px 15px 15px 15px;
   overflow-x: auto;
-  /*font-family: "Fira Code",*/
-  /*"JetBrains Mono",*/
-  /*"Consolas",*/
-  /*"Menlo",*/
-  /*"Monaco",*/
-  /*"Courier New",*/
-  /*monospace;*/
   font-size: 13px;
   line-height: 1.5;
   color: #dadde5;
@@ -1474,11 +1551,6 @@ const getFileNameFromPath = (path) => {
   margin: 0;
 }
 
-.hljs-comment {
-  color: #dadde5; /* 注释颜色 */
-}
-
-/* 代码加载状态 */
 .code-loading {
   display: flex;
   flex-direction: column;
@@ -1505,7 +1577,6 @@ const getFileNameFromPath = (path) => {
   }
 }
 
-/* 底部按钮区域 */
 :deep(.detail-drawer .el-drawer__footer) {
   padding: 10px 24px;
   border-top: 1px solid #e2e8f0;
@@ -1535,43 +1606,6 @@ const getFileNameFromPath = (path) => {
   transform: translateY(-2px);
 }
 
-
-/* 响应式调整 */
-@media (max-width: 1200px) {
-  .detail-grid {
-    grid-template-columns: 280px 1fr;
-  }
-}
-
-@media (max-width: 992px) {
-  .detail-grid {
-    grid-template-columns: 1fr;
-    grid-template-rows: auto 1fr;
-  }
-
-  .info-panel {
-    max-height: 360px;
-  }
-}
-
-@media (max-width: 768px) {
-  :deep(.detail-drawer .el-drawer__body) {
-    padding: 16px;
-  }
-
-  .detail-title h2 {
-    font-size: 18px;
-  }
-
-  .stat-grid {
-    grid-template-columns: 1fr 1fr;
-  }
-
-  .stat-item:nth-child(3) {
-    grid-column: span 2;
-  }
-}
-
 .fullscreen-btn {
   background-color: #67c23a;
   border-color: #67c23a;
@@ -1593,11 +1627,6 @@ const getFileNameFromPath = (path) => {
   background-color: #f5f7fa;
   border-color: #e4e7ed;
   color: #c0c4cc;
-}
-
-/* 全屏对话框样式 */
-.fullscreen-dialog {
-  border-radius: 8px;
 }
 
 :deep(.fullscreen-dialog .el-dialog__header) {
@@ -1654,5 +1683,50 @@ const getFileNameFromPath = (path) => {
   display: flex;
   justify-content: flex-end;
   gap: 12px;
+}
+
+/* 响应式调整 */
+@media (max-width: 1200px) {
+  .detail-grid {
+    grid-template-columns: 280px 1fr;
+  }
+}
+
+@media (max-width: 992px) {
+  .detail-grid {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
+  }
+
+  .info-panel {
+    max-height: 360px;
+  }
+}
+
+@media (max-width: 768px) {
+  :deep(.detail-drawer .el-drawer__body) {
+    padding: 16px;
+  }
+
+  .detail-title h2 {
+    font-size: 18px;
+  }
+
+  .stat-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .stat-item:nth-child(3) {
+    grid-column: span 2;
+  }
+}
+
+/* 统一设置选择器和输入框的圆角 */
+:deep(.el-input__wrapper),
+:deep(.el-select__wrapper) {
+  border-radius: 12px !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05) !important;
+  border: 1px solid rgba(235, 238, 245, 0.5) !important;
+  transition: all 0.3s ease;
 }
 </style>

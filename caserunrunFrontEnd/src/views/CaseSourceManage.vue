@@ -18,7 +18,7 @@
               <el-icon>
                 <Refresh/>
               </el-icon>
-              刷新凭证
+              &nbsp;刷新凭证
             </el-button>
             <el-button
               type="success"
@@ -29,7 +29,7 @@
               <el-icon>
                 <Plus/>
               </el-icon>
-              添加用例源
+              &nbsp;添加用例源
             </el-button>
           </div>
         </div>
@@ -70,7 +70,7 @@
               placeholder="搜索项目名称或描述"
               clearable
               class="search-input"
-              size="small"
+              size-="large"
               @input="handleSearch"
             >
               <template #prefix>
@@ -109,7 +109,7 @@
           <el-table-column prop="caseSourceValue.projectId" label="项目ID" width="80"
                            align="center"/>
           <el-table-column prop="caseProjectName" label="项目名称" min-width="120"/>
-          <el-table-column prop="caseSourceValue.branchName" label="分支" min-width="100"/>
+          <el-table-column prop="caseSourceValue.branchName" label="分支" min-width="70"/>
           <el-table-column prop="caseSourceValue.caseDir" label="用例目录" min-width="100">
             <template #default="scope">
               {{
@@ -117,7 +117,7 @@
               }}
             </template>
           </el-table-column>
-          <el-table-column prop="tokenType" label="凭证类型" width="110" align="center">
+          <el-table-column prop="tokenType" label="凭证类型" width="120" align="center">
             <template #default="scope">
               <el-tag :type="scope.row.tokenType === 'system' ? 'primary' : 'success'"
                       class="token-tag">
@@ -126,7 +126,7 @@
             </template>
           </el-table-column>
           <el-table-column prop="desc" label="描述" min-width="140"/>
-          <el-table-column prop="desc" label="虚拟环境版本" min-width="140">
+          <el-table-column prop="desc" label="虚拟环境版本" min-width="70">
             <template #default="scope">
               <el-tag v-if="scope.row.venvVersion" class="env-tag">
                 {{ scope.row.venvVersion }}
@@ -136,7 +136,7 @@
               </el-tag>
             </template>
           </el-table-column>
-          <el-table-column prop="createTime" label="创建时间" width="150" align="center">
+          <el-table-column prop="createTime" label="创建时间" width="130" align="center">
             <template #default="scope">
               <span class="time-text">{{ formatTime(scope.row.createTime) }}</span>
             </template>
@@ -147,40 +147,36 @@
                 <el-button
                   size="small"
                   type="primary"
-                  link
                   @click="openEditDialog(scope.row)"
                   class="action-button edit-btn"
+                  :icon="Edit" circle
                 >
-                  编辑
                 </el-button>
                 <el-button
                   size="small"
                   type="warning"
-                  link
                   @click="openPythonVirtualEnvDrawer(scope.row)"
                   class="action-button env-btn"
+                  :icon="Setting" circle
                   v-if="scope.row.caseType === 'pytest'"
                 >
-                  配置虚拟环境
                 </el-button>
                 <el-button
                   size="small"
                   type="warning"
-                  link
                   @click="openJavaVirtualEnvDrawer(scope.row)"
                   class="action-button env-btn"
+                  :icon="Setting" circle
                   v-if="scope.row.caseType === 'testng'"
                 >
-                  配置虚拟环境
                 </el-button>
                 <el-button
                   size="small"
                   type="danger"
-                  link
                   @click="handleDeleteCaseSource(scope.row)"
                   class="action-button delete-btn"
+                  :icon="Delete" circle
                 >
-                  删除
                 </el-button>
               </div>
             </template>
@@ -323,7 +319,7 @@
               完整路径: <b class="path-preview">{{ fullPathForPytest }}</b>
             </div>
             <div class="input-hint" v-else>
-              例如：case/order/return_order（从项目根目录开始）
+              例如：case/order/return_order（从项目根目录下的子目录开始递归查找，不输入默认为项目根目录开始递归查找）
             </div>
           </template>
           <template v-else>
@@ -895,6 +891,7 @@
 import {computed, nextTick, onMounted, reactive, ref, watch} from 'vue'
 import {useRoute} from 'vue-router'
 import {ElMessage, ElMessageBox} from 'element-plus'
+import {Edit, Setting, Delete} from '@element-plus/icons-vue'
 import hljs from 'highlight.js'
 import 'highlight.js/styles/default.css'
 import xmlLanguage from 'highlight.js/lib/languages/xml'
@@ -1962,17 +1959,19 @@ const handleFinish = (type) => {
   flex-direction: column;
   height: 100vh;
   background: #f5f7fa;
-  padding: 5px;
+  padding: 10px;
   box-sizing: border-box;
+  overflow: hidden;
 }
 
 .page-header {
   background: white;
-  border-radius: 6px;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
-  padding: 10px 15px;
-  margin-bottom: 10px;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  padding: 15px 20px;
+  margin-bottom: 15px;
   border: 1px solid #ebeef5;
+  flex-shrink: 0;
 }
 
 .header-main {
@@ -1985,41 +1984,42 @@ const handleFinish = (type) => {
 
 .page-title {
   margin: 0;
-  font-size: 18px;
-  font-weight: 600;
-  color: #303133;
+  font-size: 20px;
+  font-weight: 700;
+  color: #2c3e50;
 }
 
 .header-actions {
   display: flex;
-  gap: 8px;
+  gap: 12px;
   align-items: center;
 }
 
 .refresh-token-btn,
 .add-source-btn {
-  border-radius: 4px;
-  transition: all 0.2s ease;
-  font-size: 12px;
-  padding: 6px 10px;
+  border-radius: 12px;
+  transition: all 0.3s ease;
+  font-weight: 600;
+  height: 42px;
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
 }
 
 .refresh-token-btn:hover,
 .add-source-btn:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transform: translateY(-3px);
+  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.6);
 }
 
 .refresh-token-btn {
-  background-color: #679ae5;
-  border-color: #679ae5;
-  color: #ffffff;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: none;
+  color: white;
 }
 
 .add-source-btn {
-  background-color: #67c23a;
-  border-color: #67c23a;
-  color: #ffffff;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: none;
+  color: white;
 }
 
 .token-status-bar {
@@ -2035,7 +2035,7 @@ const handleFinish = (type) => {
   display: flex;
   align-items: center;
   gap: 4px;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 500;
 }
 
@@ -2062,8 +2062,8 @@ const handleFinish = (type) => {
 
 .source-list-card {
   background: white;
-  border-radius: 6px;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
   overflow: hidden;
   height: 100%;
   display: flex;
@@ -2075,24 +2075,20 @@ const handleFinish = (type) => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 10px 15px;
+  padding: 15px 20px;
   border-bottom: 1px solid #edf2f7;
   background-color: #f8f9fa;
 }
 
 .card-title {
   margin: 0;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 600;
   color: #303133;
 }
 
-.preview-card-footer {
-  margin-top: 20px;
-}
-
 .search-input {
-  width: 180px;
+  width: 200px;
 }
 
 .source-table {
@@ -2101,66 +2097,99 @@ const handleFinish = (type) => {
 }
 
 :deep(.table-header th) {
-  background: linear-gradient(180deg, #e2e8f0 0%, #cbd5e0 100%) !important;
-  color: #1e293b !important;
-  font-weight: 600 !important;
-  font-size: 12px !important;
-  padding: 10px 0 !important;
-  border-bottom: 1px solid #cbd5e1 !important;
+  background: #f8fafc !important;
+  color: #2c3e50 !important;
+  font-weight: 700 !important;
+  font-size: 15px !important;
+  padding: 18px 0 !important;
+  border-bottom: 1px solid rgba(235, 238, 245, 0.5) !important;
   position: relative;
+  text-align: center !important;
+}
+
+:deep(.table-header th):first-child {
+  border-top-left-radius: 12px;
+}
+
+:deep(.table-header th):last-child {
+  border-top-right-radius: 12px;
+}
+
+:deep(.table-header th:hover) {
+  background: #edf2f7 !important;
 }
 
 :deep(.table-row td) {
-  padding: 8px 0 !important;
-  font-size: 12px;
+  color: #34495e;
+  transition: all 0.3s ease;
+  font-size: 15px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+
+:deep(.table-row td::before) {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  z-index: -1;
 }
 
 :deep(.table-row:hover td) {
-  background-color: #f8fafc !important;
+  background-color: transparent !important;
+  color: #2c3e50;
+  transform: scale(1.02);
+}
+
+:deep(.table-row:hover td::before) {
+  opacity: 1;
 }
 
 .type-tag,
 .token-tag {
-  margin: 0;
+  font-size: 13px;
+  border-radius: 24px;
   border: none;
-  font-weight: 500;
-  font-size: 12px;
-  padding: 2px 6px;
-  border-radius: 8px;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+  font-weight: 600;
+}
+
+:deep(.type-tag:hover),
+:deep(.token-tag:hover) {
+  transform: translateY(-3px) scale(1.05);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
 }
 
 .time-text {
-  color: #909399;
-  font-size: 12px;
+  color: #7f8c8d;
+  font-size: 14px;
 }
 
 .action-cell {
   display: flex;
   justify-content: center;
-  gap: 5px;
+  gap: 10px;
 }
 
 .action-button {
-  font-size: 12px;
-  padding: 3px 6px;
-  border-radius: 3px;
-  transition: all 0.2s ease;
+  padding: 6px 10px !important;
+  font-size: 14px !important;
+  font-weight: 500 !important;
+  transition: all 0.3s ease !important;
+  border-radius: 8px !important;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
 }
 
-.edit-btn:hover {
-  background-color: #e3f2fd;
-  color: #1976d2 !important;
-}
-
-.env-btn:hover {
-  background-color: #fff3e0;
-  color: #f57c00 !important;
-}
-
-.delete-btn:hover {
-  background-color: #ffebee;
-  color: #d32f2f !important;
+.action-button:hover {
+  transform: translateY(-2px) scale(1.05);
+  box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
 }
 
 /* 弹窗美化核心样式 */
@@ -2177,32 +2206,35 @@ const handleFinish = (type) => {
 }
 
 :deep(.source-dialog .dialog-header) {
-  padding: 18px 24px;
+  padding: 20px 25px;
   border-bottom: 1px solid #f0f2f5;
   background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
-  margin: -20px -20px 20px -20px;
+  margin: -20px -25px 20px -25px;
   border-radius: 12px 12px 0 0;
 }
 
 :deep(.source-dialog .dialog-title) {
   margin: 0;
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 600;
   color: #1e293b;
   letter-spacing: 0.3px;
 }
 
 :deep(.source-dialog .source-form) {
-  padding: 0 10px;
+  padding: 0 15px;
 }
 
 :deep(.source-dialog .el-form-item) {
   margin-bottom: 20px;
   transition: all 0.2s ease;
+  border-radius: 10px;
+  padding: 10px;
 }
 
 :deep(.source-dialog .el-form-item:hover) {
   transform: translateX(3px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
 }
 
 :deep(.source-dialog .el-form-item__label) {
@@ -2226,7 +2258,7 @@ const handleFinish = (type) => {
   border: 1px solid #e2e8f0;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03) inset;
   transition: all 0.25s ease;
-  height: 36px;
+  height: 42px;
 }
 
 :deep(.source-dialog .custom-input .el-input__wrapper:hover),
@@ -2249,6 +2281,7 @@ const handleFinish = (type) => {
   resize: vertical;
   line-height: 1.6;
   font-size: 14px;
+  border-radius: 8px;
 }
 
 /* TestNG路径输入框 */
@@ -2280,7 +2313,7 @@ const handleFinish = (type) => {
   border-right: 1px solid #e2e8f0;
   white-space: nowrap;
   font-size: 14px;
-  height: 36px;
+  height: 42px;
   display: flex;
   align-items: center;
 }
@@ -2293,11 +2326,11 @@ const handleFinish = (type) => {
 :deep(.source-dialog .path-suffix-input .el-input__wrapper) {
   border: none !important;
   box-shadow: none !important;
-  height: 36px;
+  height: 42px;
 }
 
 :deep(.source-dialog .path-suffix-input .el-input__inner) {
-  height: 36px;
+  height: 42px;
   border-radius: 0;
   font-size: 14px;
   padding-left: 12px;
@@ -2306,15 +2339,15 @@ const handleFinish = (type) => {
 /* 提示文本样式 */
 :deep(.source-dialog .full-path-hint),
 :deep(.source-dialog .input-hint) {
-  font-size: 13px;
-  color: #64748b;
+  font-size: 12px;
+  color: #909399;
   margin-top: 6px;
-  line-height: 1.5;
+  line-height: 1.4;
   padding-left: 2px;
 }
 
 :deep(.source-dialog .path-preview) {
-  color: #1e40af;
+  color: #3b82f6;
   font-weight: 500;
   font-family: 'Fira Code', monospace;
 }
@@ -2324,24 +2357,24 @@ const handleFinish = (type) => {
   display: flex;
   justify-content: flex-end;
   gap: 12px;
-  padding: 18px 20px 20px;
+  padding: 20px 25px 25px;
   border-top: 1px solid #f0f2f5;
-  margin-top: 15px;
   background-color: #f8fafc;
-  margin: 15px -20px -20px -20px;
+  margin: 15px -25px -25px -25px;
   border-radius: 0 0 12px 12px;
 }
 
 :deep(.source-dialog .footer-button) {
-  padding: 8px 22px;
-  border-radius: 6px;
+  padding: 10px 24px;
+  border-radius: 8px;
   font-size: 14px;
   font-weight: 500;
   transition: all 0.2s ease;
-  height: 36px;
+  height: 42px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 :deep(.source-dialog .cancel-button) {
@@ -2353,20 +2386,20 @@ const handleFinish = (type) => {
 :deep(.source-dialog .cancel-button:hover) {
   background-color: #f1f5f9;
   border-color: #cbd5e1;
-  transform: translateY(-1px);
+  transform: translateY(-2px);
 }
 
 :deep(.source-dialog .confirm-button) {
-  background-color: #3b82f6;
-  border-color: #3b82f6;
+  background-color: #667eea;
+  border-color: #667eea;
   color: white;
 }
 
 :deep(.source-dialog .confirm-button:hover) {
-  background-color: #2563eb;
-  border-color: #2563eb;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.2);
+  background-color: #5a6fd8;
+  border-color: #5a6fd8;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
 }
 
 :deep(.source-dialog .confirm-button:active) {
@@ -2375,26 +2408,13 @@ const handleFinish = (type) => {
 
 /* 错误提示 */
 :deep(.source-dialog .token-hint) {
-  font-size: 13px;
+  font-size: 12px;
   color: #ef4444;
   margin-top: 6px;
   font-weight: 500;
   display: flex;
   align-items: center;
   gap: 4px;
-}
-
-:deep(.source-dialog .token-hint:before) {
-  content: "!";
-  display: inline-block;
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  background-color: #ef4444;
-  color: white;
-  font-size: 12px;
-  text-align: center;
-  line-height: 16px;
 }
 
 /* 表单验证错误样式优化 */
@@ -2580,15 +2600,15 @@ const handleFinish = (type) => {
 /* 行号样式 */
 .file-content-preview :deep(.line-number) {
   display: inline-block;
-  width: 20px;
-  padding-right: 15px;
+  width: 30px;
+  padding-right: 10px;
   text-align: right;
-  color: #999;
+  color: #858585;
   user-select: none;
-  border-right: 1px solid #eee;
+  border-right: 1px solid #444;
   margin-right: 10px;
   opacity: 0.8;
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .file-content-preview :deep(.hljs) {
@@ -2656,6 +2676,7 @@ const handleFinish = (type) => {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 :deep(.drawer-footer .cancel-button) {
@@ -2667,7 +2688,7 @@ const handleFinish = (type) => {
 :deep(.drawer-footer .cancel-button:hover) {
   background-color: #f1f5f9;
   border-color: #cbd5e1;
-  transform: translateY(-1px);
+  transform: translateY(-2px);
 }
 
 :deep(.drawer-footer .prev-button) {
@@ -2679,33 +2700,33 @@ const handleFinish = (type) => {
 :deep(.drawer-footer .prev-button:hover) {
   background-color: #f1f5f9;
   border-color: #cbd5e1;
-  transform: translateY(-1px);
+  transform: translateY(-2px);
 }
 
 :deep(.drawer-footer .next-button) {
-  background-color: #3b82f6;
-  border-color: #3b82f6;
+  background-color: #667eea;
+  border-color: #667eea;
   color: white;
 }
 
 :deep(.drawer-footer .next-button:hover) {
-  background-color: #2563eb;
-  border-color: #2563eb;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.2);
+  background-color: #5a6fd8;
+  border-color: #5a6fd8;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
 }
 
 :deep(.drawer-footer .confirm-button) {
-  background-color: #10b981;
-  border-color: #10b981;
+  background-color: #67c23a;
+  border-color: #67c23a;
   color: white;
 }
 
 :deep(.drawer-footer .confirm-button:hover) {
-  background-color: #059669;
-  border-color: #059669;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.2);
+  background-color: #5daf34;
+  border-color: #5daf34;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(103, 194, 58, 0.4);
 }
 
 /* 响应式调整 */
@@ -2817,20 +2838,6 @@ const handleFinish = (type) => {
   overflow-y: auto;
 }
 
-.file-content-preview {
-  margin: 0;
-  padding: 12px;
-  background-color: #f8fafc;
-  border-radius: 8px;
-  font-family: 'Fira Code', monospace;
-  font-size: 12px;
-  line-height: 1.5;
-  white-space: pre-wrap;
-  word-break: break-all;
-  color: #334155;
-  overflow-y: auto;
-}
-
 /* 高亮显示样式 */
 :deep(.file-content-preview code) {
   background: none !important;
@@ -2868,3 +2875,4 @@ const handleFinish = (type) => {
   color: #032f62;
 }
 </style>
+

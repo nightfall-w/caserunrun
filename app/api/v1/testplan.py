@@ -5,12 +5,14 @@
 @Time：2025/12/1 18:12
 """
 from fastapi import APIRouter, Depends
+from funboost import ApsJobAdder
 from sqlalchemy.orm import Session
 
 from app.core.auth_middleware import get_current_user
 from app.core.database import get_sync_db
 from app.core.orm_tools import model_to_dict
 from app.core.response import api_response, HttpErrcode
+from app.runner.tasks import trigger_testplan
 from app.testplan.models import CaseType
 from app.user.controller import get_nickname_by_username
 from app.user.request_models import CurrentUser
@@ -51,6 +53,27 @@ def create_test_plan(
             dingtalk_webhooks=request.dingtalk_webhooks,
             creator=userinfo.username
         )
+
+        if request.enable_schedule and request.schedule_cron_expression:
+            logger.info(f"添加定时任务: {request.schedule_cron_expression}")
+            schedule_cron_expression = request.schedule_cron_expression.split(" ")
+            if len(schedule_cron_expression) != 6:
+                return api_response(code=HttpErrcode.PARAMS_ERROR, message="定时任务表达式格式错误")
+            second = schedule_cron_expression[0]
+            minute = schedule_cron_expression[1]
+            hour = schedule_cron_expression[2]
+            day = schedule_cron_expression[3]
+            month = schedule_cron_expression[4]
+            week = schedule_cron_expression[5]
+            ApsJobAdder(
+                trigger_testplan, job_store_kind="redis", is_auto_start=False).add_push_job(
+                trigger='cron',
+                day_of_week='*',
+                hour=23,
+                minute=49,
+                second=50,
+                kwargs={"test_plan_id": test_plan.id, "trigger_user": "定时任务"},
+            )
 
         return api_response(
             code=HttpErrcode.SUCCESS,
@@ -358,9 +381,8 @@ def trigger_test_plan(request: TriggerTestPlanRequest, db: Session = Depends(get
     触发测试任务
     """
     test_plan_id = request.test_plan_id
-    crud = get_test_plan_crud(db)
     try:
-        crud.trigger_testplan(test_plan_id=test_plan_id, trigger_user=userinfo.username)
+        trigger_testplan(test_plan_id=test_plan_id, trigger_user=userinfo.username)
     except Exception as e:
         logger.error(f"触发测试计划失败: {str(e)}")
         return api_response(code=HttpErrcode.EXCEPTION, message=f"触发失败测试计划失败")
@@ -375,7 +397,11 @@ def get_test_tasks(request: TestTasksListRequest, db: Session = Depends(get_sync
     crud = get_test_plan_crud(db)
     try:
         test_tasks, total = crud.get_test_tasks_with_count(workspace_id=request.workspace_id,
-                                                           test_plan_id=request.test_plan_id, page=request.page_num,
+                                                           test_plan_id=request.test_plan_id,
+                                                           task_name=request.task_name,
+                                                           task_status=request.task_status,
+                                                           create_user=request.create_user,
+                                                           page=request.page_num,
                                                            size=request.page_size)
         nickname_cache = {}
         test_tasks_list = []

@@ -4,18 +4,16 @@
 @Author：baojun.wang
 @Time：2025/12/1 17:48
 """
-from typing import List, Tuple, Optional, Any, cast, Dict
+from typing import List, Tuple, Optional, cast, Dict
 
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.case_handler.case_parser import GitCaseParser
 from app.case_handler.models import PytestCaseModel, TestNGCaseModel
-from app.runner.tasks import case_task_executor, pytest_case_job_executor, testng_case_job_executor
 from app.testplan.models import TestPlanModel, TestPlanPytestCaseModel, TestPlanTestNGCaseModel, CaseType, \
-    TestTaskModel, TaskJobModel, TaskStatus, JobStatus, ExecutionMode
+    TestTaskModel, TaskJobModel
 from app.user.controller import get_nickname_by_username
-from utils.commonlib import now
 from utils.custom_logging import logger
 
 
@@ -489,6 +487,9 @@ class TestPlanCRUD:
             self,
             workspace_id: int,
             test_plan_id: Optional[int] = None,
+            task_status: Optional[str] = None,
+            task_name: Optional[str] = None,
+            create_user: Optional[str] = None,
             page: Optional[int] = None,
             size: Optional[int] = None
     ) -> tuple[list[type[TestTaskModel]], int]:
@@ -498,6 +499,9 @@ class TestPlanCRUD:
         Args:
             workspace_id: 工作空间ID（必填）
             test_plan_id: 测试计划ID（可选，为空时查询该工作空间下所有任务）
+            task_status: 任务状态（可选）
+            task_name: 任务名称（可选，支持模糊查询）
+            create_user:创建人（可选）
             page: 页码（从1开始），为None时返回所有数据
             size: 每页条数，为None时返回所有数据
 
@@ -522,18 +526,39 @@ class TestPlanCRUD:
         if test_plan_id is not None and test_plan_id > 0:
             base_query = base_query.filter(TestTaskModel.test_plan_id == test_plan_id)
 
-        # 3. 排序：按创建时间降序
+        # 3. 可选过滤：任务状态
+        if task_status is not None:
+            base_query = base_query.filter(TestTaskModel.task_status == task_status)
+
+        # 4. 可选过滤：任务名称（模糊查询）
+        if task_name is not None:
+            base_query = base_query.filter(TestTaskModel.task_name.like(f"%{task_name}%"))
+
+        # 5. 可选过滤：创建人
+        if create_user is not None:
+            base_query = base_query.filter(TestTaskModel.create_user == create_user)
+
+        # 6. 排序：按创建时间降序
         base_query = base_query.order_by(TestTaskModel.create_time.desc())
 
-        # 4. 查询总条数（性能最优：仅查任务表主键，复用过滤条件）
+        # 7. 查询总条数（性能最优：仅查任务表主键，复用过滤条件）
         count_query = self.db.query(func.count(TestTaskModel.id)).filter(
             TestTaskModel.workspace_id == workspace_id
         )
+
+        # 复用相同的过滤条件到计数查询
         if test_plan_id is not None and test_plan_id > 0:
             count_query = count_query.filter(TestTaskModel.test_plan_id == test_plan_id)
+        if task_status is not None:
+            count_query = count_query.filter(TestTaskModel.task_status == task_status)
+        if task_name is not None:
+            count_query = count_query.filter(TestTaskModel.task_name.like(f"%{task_name}%"))
+        if create_user is not None:
+            count_query = count_query.filter(TestTaskModel.create_user == create_user)
+
         total = cast(int, count_query.scalar() or 0)
 
-        # 5. 处理分页逻辑
+        # 8. 处理分页逻辑
         if page is not None and size is not None:
             # 参数合法性校验
             page = max(page, 1)
@@ -560,105 +585,6 @@ class TestPlanCRUD:
 
     def get_task_jobs(self, task_id: int) -> list:
         return self.db.query(TaskJobModel).filter(TaskJobModel.task_id == task_id).all()
-
-    def trigger_testplan(self, test_plan_id: int, trigger_user: str) -> bool:
-        """触发测试计划"""
-        test_plan = self.get_test_plan_by_id(test_plan_id)
-        if not test_plan:
-            raise Exception(f"测试计划id：{test_plan_id} 不存在")
-
-        # 获取所有关联的用例
-        associated_cases, invalid_cases = self.get_test_cases_by_plan_id(test_plan_id)
-        test_plan.total_case_count = len(associated_cases)
-
-        # 有效的用例
-        valid_cases = []
-
-        for case in associated_cases:
-            if case['case_type'] == CaseType.PYTEST:
-                pytest_case = self.db.query(PytestCaseModel).filter(
-                    PytestCaseModel.case_uuid == case['case_uuid']
-                ).first()
-                if not pytest_case:
-                    continue
-                valid_cases.append(pytest_case)
-            elif case['case_type'] == CaseType.TESTNG:
-                testng_case = self.db.query(TestNGCaseModel).filter(
-                    TestNGCaseModel.case_uuid == case['case_uuid']
-                ).first()
-                if not testng_case:
-                    continue
-                valid_cases.append(testng_case)
-
-        if not valid_cases:
-            raise Exception("当前测试计划下没有有效的用例可以执行")
-
-        # 创建测试任务task
-        task = TestTaskModel(workspace_id=test_plan.workspace_id,
-                             test_plan_id=test_plan_id,
-                             task_name=test_plan.plan_name,
-                             fail_stop=test_plan.fail_stop,
-                             task_execution_mode=test_plan.execution_mode,
-                             test_environment=test_plan.test_environment,
-                             task_status=TaskStatus.PENDING,
-                             create_user=trigger_user,
-                             task_result={
-                                 "total_case_count": len(valid_cases),
-                                 "finished_case_count": 0
-                             },
-                             create_time=now(),
-                             update_time=now()
-                             )
-        self.db.add(task)
-        self.db.commit()
-        task_id = task.id
-
-        # 创建测试任务taskJob
-        for case in valid_cases:
-            job = TaskJobModel(workspace_id=test_plan.workspace_id,
-                               task_id=task_id,
-                               test_plan_id=test_plan_id,
-                               case_name=case.case_name,
-                               case_uuid=case.case_uuid,
-                               case_type=case.case_type,
-                               case_function_list=case.case_function_list,
-                               job_status=JobStatus.PENDING,
-                               case_path=case.case_path,
-                               case_package=case.case_package,
-                               create_time=now(),
-                               update_time=now(),
-                               time_consuming=0
-                               )
-            self.db.add(job)
-            self.db.commit()
-            test_plan.pending_task_count += 1
-            self.db.commit()
-
-        if task.task_execution_mode == ExecutionMode.SERIAL:
-            case_task_executor.push(
-                task_id=task_id,
-                workspace_id=test_plan.workspace_id,
-                plan_id=test_plan_id,
-            )
-        elif task.task_execution_mode == ExecutionMode.PARALLEL:
-            case_jobs = self.db.query(TaskJobModel).filter(
-                TaskJobModel.task_id == task_id
-            )
-            for case_job in case_jobs:
-                if case_job.case_type == CaseType.PYTEST:
-                    pytest_case_job_executor.push(
-                        task_id=task_id,
-                        workspace_id=test_plan.workspace_id,
-                        plan_id=test_plan_id,
-                        job_id=case_job.id
-                    )
-                elif case_job.case_type == CaseType.TESTNG:
-                    testng_case_job_executor.push(
-                        task_id=task_id,
-                        workspace_id=test_plan.workspace_id,
-                        plan_id=test_plan_id,
-                        job_id=case_job.id
-                    )
 
 
 def get_test_plan_crud(db: Session) -> TestPlanCRUD:

@@ -24,7 +24,9 @@
             class="filter-input"
           >
             <template #prefix>
-              <el-icon><Search /></el-icon>
+              <el-icon>
+                <Search/>
+              </el-icon>
             </template>
           </el-input>
         </el-col>
@@ -40,7 +42,9 @@
             class="filter-input"
           >
             <template #prefix>
-              <el-icon><User /></el-icon>
+              <el-icon>
+                <User/>
+              </el-icon>
             </template>
           </el-input>
         </el-col>
@@ -231,7 +235,9 @@
           <!-- 任务基本信息 -->
           <div class="section">
             <h3 class="section-title">
-              <el-icon><Document /></el-icon>
+              <el-icon>
+                <Document/>
+              </el-icon>
               任务基本信息
             </h3>
             <el-card class="info-card">
@@ -281,32 +287,48 @@
           <!-- 任务统计 -->
           <div class="section">
             <h3 class="section-title">
-              <el-icon><DataAnalysis /></el-icon>
+              <el-icon>
+                <DataAnalysis/>
+              </el-icon>
               任务统计
             </h3>
             <el-card class="stat-card">
               <div class="stats-grid">
                 <div class="stat-item">
                   <div class="stat-icon">
-                    <el-icon><Document /></el-icon>
+                    <el-icon>
+                      <Document/>
+                    </el-icon>
                   </div>
-                  <div class="stat-value">{{ selectedTask.task_result?.total_case_count || 0 }}</div>
+                  <div class="stat-value">{{
+                      selectedTask.task_result?.total_case_count || 0
+                    }}
+                  </div>
                   <div class="stat-label">总用例数</div>
                 </div>
                 <div class="stat-item">
                   <div class="stat-icon">
-                    <el-icon><Check /></el-icon>
+                    <el-icon>
+                      <Check/>
+                    </el-icon>
                   </div>
-                  <div class="stat-value">{{ selectedTask.task_result?.finished_case_count || 0 }}</div>
+                  <div class="stat-value">{{
+                      selectedTask.task_result?.finished_case_count || 0
+                    }}
+                  </div>
                   <div class="stat-label">已完成</div>
                 </div>
                 <div class="stat-item">
                   <div class="stat-icon">
-                    <el-icon><TrendCharts /></el-icon>
+                    <el-icon>
+                      <TrendCharts/>
+                    </el-icon>
                   </div>
                   <div class="stat-value">
-                    {{ selectedTask.task_result?.finished_case_count ?
-                       Math.round((selectedTask.task_result.finished_case_count / selectedTask.task_result.total_case_count) * 100) : 0 }}%
+                    {{
+                      selectedTask.task_result?.finished_case_count ?
+                        Math.round((selectedTask.task_result.finished_case_count / selectedTask.task_result.total_case_count) * 100) : 0
+                    }}%
                   </div>
                   <div class="stat-label">完成率</div>
                 </div>
@@ -317,7 +339,9 @@
           <!-- 任务用例详情 -->
           <div class="section">
             <h3 class="section-title">
-              <el-icon><List /></el-icon>
+              <el-icon>
+                <List/>
+              </el-icon>
               任务用例详情
             </h3>
             <el-card class="jobs-card">
@@ -371,15 +395,21 @@
                     <div class="result-stats">
                       <div class="result-item">
                         <span class="result-label">通过:</span>
-                        <span class="result-value passed">{{ scope.row.job_result?.passed || 0 }}</span>
+                        <span class="result-value passed">{{
+                            scope.row.job_result?.passed || 0
+                          }}</span>
                       </div>
                       <div class="result-item">
                         <span class="result-label">失败:</span>
-                        <span class="result-value failed">{{ scope.row.job_result?.failed || 0 }}</span>
+                        <span class="result-value failed">{{
+                            scope.row.job_result?.failed || 0
+                          }}</span>
                       </div>
                       <div class="result-item">
                         <span class="result-label">总数:</span>
-                        <span class="result-value total">{{ scope.row.job_result?.total || 0 }}</span>
+                        <span class="result-value total">{{
+                            scope.row.job_result?.total || 0
+                          }}</span>
                       </div>
                     </div>
                   </template>
@@ -387,7 +417,9 @@
 
                 <el-table-column label="成功率" width="120">
                   <template #default="scope">
-                    <span class="success-rate">{{ (scope.row.job_result?.successful || 0).toFixed(1) }}%</span>
+                    <span class="success-rate">{{
+                        (scope.row.job_result?.successful || 0).toFixed(1)
+                      }}%</span>
                   </template>
                 </el-table-column>
 
@@ -417,7 +449,16 @@
 import {onMounted, reactive, ref} from 'vue'
 import {useRoute} from 'vue-router'
 import {ElMessage, ElMessageBox} from 'element-plus'
-import {Search, Refresh, User, Document, DataAnalysis, TrendCharts, Check, List} from '@element-plus/icons-vue'
+import {
+  Search,
+  Refresh,
+  User,
+  Document,
+  DataAnalysis,
+  TrendCharts,
+  Check,
+  List
+} from '@element-plus/icons-vue'
 import {getTestTaskList, getTestTaskDetail} from '@/network/api.js'
 
 // 路由参数
@@ -504,7 +545,7 @@ const fetchTestTaskList = async () => {
 const fetchTestTaskDetail = async (taskId) => {
   detailLoading.value = true
   try {
-    const res = await getTestTaskDetail({ task_id: taskId })
+    const res = await getTestTaskDetail({task_id: taskId})
 
     if (res.code === 0) {
       selectedTask.value = res.data
@@ -968,7 +1009,6 @@ const getStatusText = (status) => {
   font-size: 15px;
   padding: 10px 14px;
   border-radius: 8px;
-  border: 1px solid rgba(235, 238, 245, 0.8);
 }
 
 :deep(.el-pagination .el-pagination__jump .el-input .el-input__inner) {
@@ -1266,5 +1306,14 @@ const getStatusText = (status) => {
     background: #334155;
     border: 1px solid #475569;
   }
+}
+
+/* 统一设置选择器和输入框的圆角 */
+:deep(.el-input__wrapper),
+:deep(.el-select__wrapper) {
+  border-radius: 12px !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05) !important;
+  border: 1px solid rgba(235, 238, 245, 0.5) !important;
+  transition: all 0.3s ease;
 }
 </style>
