@@ -445,6 +445,7 @@
               <!-- 指定值配置 -->
               <div v-if="cronForm[activeTimeDimension].type === 'specific'" class="config-fields">
                 <el-select
+                  v-if="activeTimeDimension === 'dayOfWeek'"
                   v-model="cronForm[activeTimeDimension].specificValues"
                   multiple
                   placeholder="请选择值"
@@ -452,10 +453,25 @@
                   style="width: 100%"
                 >
                   <el-option
-                    v-for="val in getDimensionOptions(activeTimeDimension)"
-                    :key="val.value"
-                    :label="val.label"
-                    :value="val.value"
+                    v-for="option in getDimensionOptions(activeTimeDimension)"
+                    :key="option.value"
+                    :label="numberToWeekDay(parseInt(option.value))"
+                    :value="parseInt(option.value)"
+                  />
+                </el-select>
+                <el-select
+                  v-else
+                  v-model="cronForm[activeTimeDimension].specificValues"
+                  multiple
+                  placeholder="请选择值"
+                  @change="updateCronExpression"
+                  style="width: 100%"
+                >
+                  <el-option
+                    v-for="option in getDimensionOptions(activeTimeDimension)"
+                    :key="option.value"
+                    :label="parseInt(option.value)"
+                    :value="parseInt(option.value)"
                   />
                 </el-select>
               </div>
@@ -1107,19 +1123,18 @@ const getDimensionOptions = (dimension) => {
 
 // 数字到中文星期的映射
 const numberToWeekDay = (num) => {
-  const weekDays = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
+  const weekDays = ['周一(0)', '周二(1)', '周三(2)', '周四(3)', '周五(4)', '周六(5)', '周日(6)'];
   return weekDays[num] || '';
 };
-
 
 // 维度切换处理
 const handleDimensionChange = (dimension) => {
   // 日和周互斥提示和自动设置
-  if (dimension === 'day' && cronForm.dayOfWeek.type !== 'none') {
+  if (dimension === 'day' && cronForm.dayOfWeek.type !== 'all') {
     // 切换到日时，自动将周设为不指定
-    cronForm.dayOfWeek.type = 'none';
+    cronForm.dayOfWeek.type = 'all';
     ElMessage.warning({
-      message: '日和周不能同时指定，已将周设置为"不指定"',
+      message: '日和周不能同时指定，已将周设置为"所有值"',
       duration: 8000 // 8秒
     });
     // 更新Cron表达式
@@ -1172,12 +1187,6 @@ const parseCronToForm = () => {
         let s = parseInt(start);
         let e = parseInt(end);
 
-        // 将Cron标准的0=周日,1-6=周一到周六转换为你需要的0=周一,1=周二,...,6=周日
-        if (s === 0) s = 6; // 周日转为6
-        else s = s - 1;      // 其他天减1
-
-        if (e === 0) e = 6;  // 周日转为6
-        else e = e - 1;      // 其他天减1
 
         cronForm[dimension].type = 'range';
         cronForm[dimension].rangeStart = s;
@@ -1210,25 +1219,11 @@ const parseCronToForm = () => {
       // 处理逗号分隔的多个值
       let values = part.split(',').map(v => parseInt(v));
 
-      // 如果是周字段，需要根据映射进行转换
-      if (dimension === 'dayOfWeek') {
-        values = values.map(v => {
-          if (v === 0) return 6; // 周日转为6
-          return v - 1;           // 其他天减1
-        });
-      }
-
       cronForm[dimension].type = 'specific';
       cronForm[dimension].specificValues = values;
     } else {
       // 单个值视为指定值
       let value = parseInt(part);
-
-      // 如果是周字段，需要根据映射进行转换
-      if (dimension === 'dayOfWeek') {
-        if (value === 0) value = 6; // 周日转为6
-        else value = value - 1;      // 其他天减1
-      }
 
       cronForm[dimension].type = 'specific';
       cronForm[dimension].specificValues = [value];
@@ -1275,6 +1270,7 @@ const updateExecutionTimes = () => {
   if (!planForm.schedule_cron_expression) return;
 
   try {
+    console.log('Cron表达式:', planForm.schedule_cron_expression);
     // 将Cron表达式中的星期字段转换为标准格式（0=周日, 1=周一, ..., 6=周六）
     const cronParts = planForm.schedule_cron_expression.trim().split(/\s+/);
 
@@ -1302,13 +1298,21 @@ const updateExecutionTimes = () => {
         // 转换为标准格式
         const stdStart = (start + 1) % 7;
         const stdEnd = (end + 1) % 7;
-        // 处理跨越周日的情况
-        if (stdStart <= stdEnd) {
+        // 处理跨越周日的情况：当原始范围跨越周日时（如6-0表示周六到周日）
+        if (start > end) {
+          // 原始范围跨越周日，需要转换为离散值列表
+          const days = [];
+          for (let i = start; i <= 6; i++) {
+            days.push((i + 1) % 7);
+          }
+          for (let i = 0; i <= end; i++) {
+            days.push((i + 1) % 7);
+          }
+          parts[5] = days.join(',');
+        } else if (stdStart <= stdEnd) {
           parts[5] = `${stdStart}-${stdEnd}`;
         } else {
-          // 例如：原为4-6(周五到周日)，转为标准格式后变成5-0，需特殊处理
-          // 由于标准格式中0是周日，6是周六，所以4-6(周五到周日)应为4,5,6
-          // 实际上应该生成一系列离散值
+          // 其他跨越情况也转换为离散值
           const days = [];
           for (let i = start; i <= end; i++) {
             days.push((i + 1) % 7);
@@ -1376,7 +1380,6 @@ const updateExecutionTimes = () => {
     executionTimes.value = ['Cron表达式格式错误'];
   }
 };
-
 
 
 // 初始化Cron表单

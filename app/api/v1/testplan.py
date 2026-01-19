@@ -4,6 +4,7 @@
 @Author：baojun.wang
 @Time：2025/12/1 18:12
 """
+from apscheduler.jobstores.base import JobLookupError
 from fastapi import APIRouter, Depends
 from funboost import ApsJobAdder
 from sqlalchemy.orm import Session
@@ -66,12 +67,15 @@ def create_test_plan(
             month = schedule_cron_expression[4]
             week = schedule_cron_expression[5]
             ApsJobAdder(
-                trigger_testplan, job_store_kind="redis", is_auto_start=False).add_push_job(
+                trigger_testplan, job_store_kind="redis").add_push_job(
+                id=f"testplan_{test_plan.id}",
                 trigger='cron',
-                day_of_week='*',
-                hour=23,
-                minute=49,
-                second=50,
+                day_of_week=week,
+                day=day,
+                hour=hour,
+                minute=minute,
+                second=second,
+                month=month,
                 kwargs={"test_plan_id": test_plan.id, "trigger_user": "定时任务"},
             )
 
@@ -160,6 +164,41 @@ def update_test_plan(
 
     if not success:
         return api_response(code=HttpErrcode.EXCEPTION, message="更新测试计划失败")
+    if not request.enable_schedule or not request.schedule_cron_expression:
+        # 删除定时任务
+        job_id = f"testplan_{test_plan.id}"
+        try:
+            ApsJobAdder(
+                trigger_testplan, job_store_kind="redis").aps_obj.remove_job(
+                job_id=job_id
+            )
+        except JobLookupError:
+            logger.info(f"定时任务不存在: {job_id}")
+    if request.enable_schedule and request.schedule_cron_expression:
+        job_id = f"testplan_{test_plan.id}"
+        logger.info(f"添加定时任务: {request.schedule_cron_expression}")
+        schedule_cron_expression = request.schedule_cron_expression.split(" ")
+        if len(schedule_cron_expression) != 6:
+            return api_response(code=HttpErrcode.PARAMS_ERROR, message="定时任务表达式格式错误")
+        second = schedule_cron_expression[0]
+        minute = schedule_cron_expression[1]
+        hour = schedule_cron_expression[2]
+        day = schedule_cron_expression[3]
+        month = schedule_cron_expression[4]
+        week = schedule_cron_expression[5]
+        ApsJobAdder(
+            trigger_testplan, job_store_kind="redis").add_push_job(
+            id=job_id,
+            trigger='cron',
+            day_of_week=week,
+            day=day,
+            hour=hour,
+            minute=minute,
+            month=month,
+            second=second,
+            replace_existing=True,
+            kwargs={"test_plan_id": test_plan.id, "trigger_user": "定时任务"},
+        )
 
     return api_response(code=HttpErrcode.SUCCESS, message="更新成功")
 
