@@ -673,6 +673,7 @@ const getStatusText = (status) => {
   const textMap = {
     Pending: '等待中',
     Running: '运行中',
+    Completed: '已完成',
     Failed: '失败',
     Canceled: '已取消',
     Timeout: '超时',
