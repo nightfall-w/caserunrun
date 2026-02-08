@@ -286,6 +286,7 @@ def case_task_executor(workspace_id: int, plan_id: int, task_id: int):
                 case_job.job_result = case_execute_result['case_result']
                 case_job.report_path = case_execute_result['case_report']
                 db.commit()
+                update_task_status(task_id, db)
                 if case_task.fail_stop:
                     # 失败时停止 结束后续case执行
                     cancel_job(case_jobs[index + 1:], db)
@@ -297,8 +298,8 @@ def case_task_executor(workspace_id: int, plan_id: int, task_id: int):
                 case_job.job_result = case_execute_result['case_result']
                 case_job.report_path = case_execute_result['case_report']
                 db.commit()
+                update_task_status(task_id, db)
                 continue
-            update_task_status(task_id, db)
 
         except FunctionTimedOut:
             # case执行时间超时

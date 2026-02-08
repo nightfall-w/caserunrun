@@ -315,7 +315,7 @@
                       selectedTask.task_result?.total_case_count || 0
                     }}
                   </div>
-                  <div class="stat-label">总用例数</div>
+                  <div class="stat-label">总用例脚本数</div>
                 </div>
                 <div class="stat-item">
                   <div class="stat-icon">
@@ -401,7 +401,7 @@
                   </template>
                 </el-table-column>
 
-                <el-table-column label="执行结果" width="180">
+                <el-table-column label="function执行结果" width="180">
                   <template #default="scope">
                     <div class="result-stats">
                       <div class="result-item">
@@ -426,7 +426,7 @@
                   </template>
                 </el-table-column>
 
-                <el-table-column label="成功率" width="120">
+                <el-table-column label="function成功率" width="120">
                   <template #default="scope">
                     <span class="success-rate">{{
                         (scope.row.job_result?.successful || 0).toFixed(1)
@@ -673,10 +673,11 @@ const getStatusText = (status) => {
   const textMap = {
     Pending: '等待中',
     Running: '运行中',
-    Completed: '已完成',
     Failed: '失败',
     Canceled: '已取消',
     Timeout: '超时',
+    Exception: '异常',
+    Success: '成功'
   }
   return textMap[status] || status
 }
