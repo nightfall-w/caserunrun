@@ -73,6 +73,8 @@ def bind_case_source(request: BindCaseSourceRequest, db: Session = Depends(get_s
     token_type = request.tokenType
     case_source_platform = request.caseSourcePlatform
     case_source_value = request.caseSourceValue
+    origin = request.headers.get("origin")
+    logger.info(f"origin:{origin}")
 
     if not all([workspace_id, specific_type, case_type, case_source_value]):
         return api_response(code=HttpErrcode.PARAMS_MISSING, message="缺少必要参数")
@@ -120,14 +122,12 @@ def bind_case_source(request: BindCaseSourceRequest, db: Session = Depends(get_s
     db.commit()
     db.refresh(case_source_relation)
 
-    setting_crud = SettingCRUD(db)
-    server_domain = setting_crud.get_system_config_by_key("SERVER_DOMAIN").value
     try:
         init_case_project(gitlab_url=gitlab_url, token=token, case_source_relation=case_source_relation)
         if case_source_relation.case_type in [CaseType.PYTEST, CaseType.TESTNG]:
             GitlabAPI(gitlab_url=gitlab_url, token=token).create_webhook(
                 project_id=case_source_relation.case_source_value['projectId'],
-                url=server_domain + '/api/case/GitCaseSync'
+                url=origin + '/api/case/GitCaseSync'
             )
     except Exception as e:
         logger.error(f"初始化用例项目失败: {str(traceback.format_exc())}")

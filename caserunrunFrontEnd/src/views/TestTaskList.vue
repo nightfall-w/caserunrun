@@ -157,6 +157,17 @@
           </template>
         </el-table-column>
 
+        <el-table-column label="进度" width="180">
+          <template #default="scope">
+            <el-progress
+              :percentage="calculateProgress(scope.row)"
+              :stroke-width="10"
+              :show-text="true"
+              :color="getProgressColor(scope.row)"
+            />
+          </template>
+        </el-table-column>
+
         <el-table-column prop="task_status" label="任务状态" width="120">
           <template #default="scope">
             <el-tag
@@ -669,6 +680,34 @@ const getStatusText = (status) => {
   }
   return textMap[status] || status
 }
+
+// 计算进度百分比
+const calculateProgress = (row) => {
+  if (!row.task_result || row.task_result.total_case_count === 0) {
+    return 0;
+  }
+  const finished = row.task_result.finished_case_count || 0;
+  const total = row.task_result.total_case_count;
+  return Math.round((finished / total) * 100);
+};
+
+// 根据任务状态返回进度条颜色
+const getProgressColor = (row) => {
+  const status = row.task_status;
+  switch (status) {
+    case 'Running':
+      return '#409EFF'; // 蓝色
+    case 'Completed':
+      return '#67C23A'; // 绿色
+    case 'Failed':
+      return '#F56C6C'; // 红色
+    case 'Timeout':
+      return '#E6A23C'; // 橙色
+    default:
+      return '#909399'; // 灰色
+  }
+};
+
 </script>
 
 <style scoped>

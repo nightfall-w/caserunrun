@@ -337,9 +337,9 @@
 
             <!-- 配置区域 -->
             <div class="cron-config-area">
-              <div class="config-desc">配置{{
+              <div class="config-desc">正在配置{{
                   dimensionLabels[activeTimeDimension]
-                }}的执行规则
+                }}的执行规则：
               </div>
 
               <!-- 规则类型选择 -->
@@ -357,12 +357,6 @@
                   间隔执行(a/b)
                 </el-radio>
                 <el-radio label="specific" value="specific">指定值(a,b,c)</el-radio>
-                <el-radio
-                  label="none"
-                  value="none"
-                  v-if="['day', 'dayOfWeek'].includes(activeTimeDimension)">
-                  不指定(?) - 仅用于日/周
-                </el-radio>
               </el-radio-group>
 
 
@@ -478,7 +472,7 @@
 
               <!-- 所有值/不指定 说明 -->
               <div v-if="['all', 'none'].includes(cronForm[activeTimeDimension].type)"
-                   class="config-desc">
+                   class="config-desc">注意：
                 {{
                   cronForm[activeTimeDimension].type === 'all' ?
                     (activeTimeDimension === 'second' ? '每秒都会执行' :
@@ -1140,11 +1134,11 @@ const handleDimensionChange = (dimension) => {
     // 更新Cron表达式
     updateCronExpression();
   }
-  if (dimension === 'dayOfWeek' && cronForm.day.type !== 'none') {
+  if (dimension === 'dayOfWeek' && cronForm.day.type !== 'all') {
     // 切换到周时，自动将日设为不指定
-    cronForm.day.type = 'none';
+    cronForm.day.type = 'all';
     ElMessage.warning({
-      message: '周和日不能同时指定，已将日设置为"不指定"',
+      message: '周和日不能同时指定，已将日设置为"所有值"',
       duration: 8000 // 8秒
     });
     // 更新Cron表达式
@@ -3586,6 +3580,7 @@ const handleCaseCurrentChange = (val) => {
 }
 
 .cron-editor-container {
+  width: 90%;
   margin-top: 15px;
   padding: 15px;
   background: #f8f9fa;
@@ -3595,8 +3590,9 @@ const handleCaseCurrentChange = (val) => {
 
 .config-desc {
   margin: 10px 0;
-  color: #606266;
+  color: #34495e;
   font-size: 13px;
+  font-weight: 500;
 }
 
 .rule-type-group {
