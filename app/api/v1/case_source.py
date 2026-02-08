@@ -7,7 +7,7 @@
 import copy
 import traceback
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from gitlab import GitlabAuthenticationError, GitlabGetError
 from requests import ConnectTimeout, ConnectionError
 from requests.exceptions import InvalidURL
@@ -30,6 +30,10 @@ from app.user.request_models import CurrentUser
 from utils.custom_logging import logger
 
 router = APIRouter(prefix="/case_source", tags=["git仓库用例同步"])
+
+
+def get_origin(request: Request):
+    return request.headers.get("origin")
 
 
 @router.post("/checkToken")
@@ -62,7 +66,9 @@ def check_token(request: CheckTokenRequest, db: Session = Depends(get_sync_db),
 
 @router.post("/bind")
 def bind_case_source(request: BindCaseSourceRequest, db: Session = Depends(get_sync_db),
-                     current_user: CurrentUser = Depends(get_current_user)):
+                     origin: str = Depends(get_origin),
+                     current_user: CurrentUser = Depends(get_current_user)
+                     ):
     """
     绑定用例源
     """
@@ -73,7 +79,6 @@ def bind_case_source(request: BindCaseSourceRequest, db: Session = Depends(get_s
     token_type = request.tokenType
     case_source_platform = request.caseSourcePlatform
     case_source_value = request.caseSourceValue
-    origin = request.headers.get("origin")
     logger.info(f"origin:{origin}")
 
     if not all([workspace_id, specific_type, case_type, case_source_value]):
