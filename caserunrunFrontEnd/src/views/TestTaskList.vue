@@ -661,6 +661,8 @@ const getStatusTagType = (status) => {
     Running: 'primary',
     Completed: 'success',
     Failed: 'danger',
+    Exception: 'danger',
+    Success: 'success',
     Timeout: 'warning',
     Canceled: 'info',
     Pending: 'info'
@@ -701,8 +703,12 @@ const getProgressColor = (row) => {
       return '#409EFF'; // 蓝色
     case 'Completed':
       return '#67C23A'; // 绿色
+    case 'Success':
+      return '#67C23A';
     case 'Failed':
       return '#F56C6C'; // 红色
+    case 'Exception':
+      return '#F56C6C';
     case 'Timeout':
       return '#E6A23C'; // 橙色
     default:
