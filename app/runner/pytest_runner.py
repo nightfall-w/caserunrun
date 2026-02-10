@@ -207,13 +207,17 @@ class PytestCaseRunner:
         venv_id = db.query(CaseSourceRelationModel).filter(CaseSourceRelationModel.workspace_id == workspace_id,
                                                            CaseSourceRelationModel.case_source_value[
                                                                "projectId"] == project_id).first().venv_id
+        if not venv_id:
+            raise Exception(
+                f'当前项目{project_id}的python虚拟环境不存在，请先在代码仓库-用例源管理页面配置用例源的python虚拟环境')
         venv_info = db.query(PythonVirtualEnvModel).filter(PythonVirtualEnvModel.id == venv_id).first()
         if not venv_info:
-            raise Exception(f'请先配置用例源的python虚拟环境,venv_id-{project_id}不存在')
+            raise Exception(
+                f'当前项目{project_id}的python虚拟环境不存在，请先在代码仓库-用例源管理页面配置用例源的python虚拟环境')
         venv_path = venv_info.path
         pytest_path = os.path.join(venv_path, 'bin', 'pytest')
         if not os.path.exists(pytest_path):
-            raise Exception(f'请先配置python虚拟环境,python虚拟环境不存在: {pytest_path}')
+            raise Exception(f'请重新配置项目{project_id}的python虚拟环境,python虚拟环境不存在: {pytest_path}')
         # case报告文件名称预先生成
         report_name = case_path.split('/')[-1].split('.')[0] + '.html'
         xml_name = case_path.split('/')[-1].split('.')[0] + '.xml'
