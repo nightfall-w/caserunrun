@@ -62,10 +62,14 @@ class TestNGCaseRunner:
         venv_id = db.query(CaseSourceRelationModel).filter(CaseSourceRelationModel.workspace_id == workspace_id,
                                                            CaseSourceRelationModel.case_source_value[
                                                                "projectId"] == project_id).first().venv_id
+        if not venv_id:
+            raise Exception(
+                f'当前项目{project_id}的Java虚拟环境不存在，请先在代码仓库-用例源管理页面配置用例源的Java虚拟环境')
         venv_info = db.query(JavaEnvModel).filter(JavaEnvModel.id == venv_id).first()
 
         if not venv_info or not venv_info.maven_setting_path:
-            raise Exception(f'请先配置用例源的Java虚拟环境,venv_id-{project_id}不存在')
+            raise Exception(
+                f'当前项目{project_id}的Java虚拟环境不存在，请先在代码仓库-用例源管理页面配置用例源的Java虚拟环境')
 
         mvn = "mvn"
         xml_name = 'testng-results.xml'
