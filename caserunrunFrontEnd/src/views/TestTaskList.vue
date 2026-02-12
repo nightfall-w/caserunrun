@@ -401,9 +401,9 @@
                   </template>
                 </el-table-column>
 
-                <el-table-column label="function执行结果" width="180">
+                <el-table-column label="function执行结果" width="220">
                   <template #default="scope">
-                    <div class="result-stats">
+                    <div v-if="isValidJobResult(scope.row.job_result)" class="result-stats">
                       <div class="result-item">
                         <span class="result-label">通过:</span>
                         <span class="result-value passed">{{
@@ -417,22 +417,36 @@
                           }}</span>
                       </div>
                       <div class="result-item">
+                        <span class="result-label">错误:</span>
+                        <span class="result-value error">{{
+                            scope.row.job_result?.error || 0
+                          }}</span>
+                      </div>
+                      <div class="result-item">
+                        <span class="result-label">跳过:</span>
+                        <span class="result-value skipped">{{
+                            scope.row.job_result?.skipped || 0
+                          }}</span>
+                      </div>
+                      <div class="result-item">
                         <span class="result-label">总数:</span>
                         <span class="result-value total">{{
                             scope.row.job_result?.total || 0
                           }}</span>
                       </div>
+                      <div class="result-item">
+                        <span class="result-label">成功率:</span>
+                        <span class="result-value success-rate">{{
+                            scope.row.job_result?.successful?.toFixed(1) || 0
+                          }}%</span>
+                      </div>
+                    </div>
+                    <div v-else class="no-data">
+                      无数据
                     </div>
                   </template>
                 </el-table-column>
 
-                <el-table-column label="function成功率" width="120">
-                  <template #default="scope">
-                    <span class="success-rate">{{
-                        (scope.row.job_result?.successful || 0).toFixed(1)
-                      }}%</span>
-                  </template>
-                </el-table-column>
 
                 <el-table-column label="操作" width="140" fixed="right">
                   <template #default="scope">
@@ -708,13 +722,28 @@ const getProgressColor = (row) => {
     case 'Failed':
       return '#F56C6C'; // 红色
     case 'Exception':
-      return '#F56C6C';
+      return '#a41f4f';
     case 'Timeout':
       return '#E6A23C'; // 橙色
     default:
       return '#909399'; // 灰色
   }
 };
+
+const isValidJobResult = (jobResult) => {
+  if (!jobResult || typeof jobResult !== 'object') {
+    return false;
+  }
+  return (
+    typeof jobResult.passed === 'number' &&
+    typeof jobResult.failed === 'number' &&
+    typeof jobResult.error === 'number' &&
+    typeof jobResult.skipped === 'number' &&
+    typeof jobResult.total === 'number' &&
+    typeof jobResult.successful === 'number'
+  );
+};
+
 
 </script>
 
@@ -1204,18 +1233,20 @@ const getProgressColor = (row) => {
 .result-stats {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  align-items: flex-start;
+  align-items: center; /* 水平居中 */
+  justify-content: center; /* 垂直居中 */
+  gap: 8px; /* 项目之间的间距 */
+  padding: 10px 0;
 }
 
 .result-item {
-  display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   font-size: 14px;
   padding: 4px 8px;
   border-radius: 6px;
-  background: rgba(236, 245, 255, 0.5);
+  width: 100%; /* 确保宽度一致 */
+  text-align: center; /* 文字居中 */
 }
 
 .result-label {
@@ -1237,6 +1268,18 @@ const getProgressColor = (row) => {
 
 .result-value.total {
   color: #409eff;
+}
+
+.result-value.error {
+  color: #e6a23c; /* 橙色 */
+}
+
+.result-value.skipped {
+  color: #909399; /* 灰色 */
+}
+
+.result-value.success-rate {
+  color: #10b981; /* 绿色 */
 }
 
 .success-rate {
@@ -1362,5 +1405,12 @@ const getProgressColor = (row) => {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05) !important;
   border: 1px solid rgba(235, 238, 245, 0.5) !important;
   transition: all 0.3s ease;
+}
+
+.no-data {
+  color: #909399;
+  font-size: 14px;
+  text-align: center;
+  padding: 10px 0;
 }
 </style>

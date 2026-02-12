@@ -174,6 +174,7 @@ class TaskJobModel(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     workspace_id = Column(Integer, nullable=False, comment="workspace用例库ID")
     task_id = Column(Integer, nullable=False, comment="关联的测试任务id")
+    case_commit_id = Column(String(100), nullable=False, comment="git提交id")
     test_plan_id = Column(Integer, nullable=False, comment="关联的测试计划id")
     case_name = Column(String(200), nullable=False, comment="case_name")
     case_uuid = Column(String(400), nullable=False, comment="case uuid")
