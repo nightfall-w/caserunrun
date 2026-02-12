@@ -450,23 +450,108 @@
 
                 <el-table-column label="操作" width="140" fixed="right">
                   <template #default="scope">
-                    <el-button
-                      size="small"
-                      type="primary"
-                      @click="openReport(scope.row)"
-                      :disabled="!scope.row.report_path"
-                      :icon="Document"
-                    >
-                      查看报告
-                    </el-button>
+                    <!-- 第一行：查看用例按钮 -->
+                    <div class="button-row">
+                      <el-button
+                        size="small"
+                        type="primary"
+                        @click="openTestCaseDetail(scope.row)"
+                        :disabled="!scope.row.case_uuid || !scope.row.case_commit_id"
+                        :icon="Document"
+                        class="view-case-button"
+                      >
+                        查看用例
+                      </el-button>
+                    </div>
+
+                    <!-- 第二行：查看报告按钮 -->
+                    <div class="button-row">
+                      <el-button
+                        size="small"
+                        type="success"
+                        @click="openReport(scope.row)"
+                        :disabled="!scope.row.report_path"
+                        :icon="Document"
+                        class="view-report-button"
+                      >
+                        查看报告
+                      </el-button>
+                    </div>
                   </template>
                 </el-table-column>
+
+
               </el-table>
             </el-card>
           </div>
         </template>
       </div>
     </el-drawer>
+
+    <!-- 用例详情抽屉 -->
+    <el-drawer
+      v-model="testCaseDrawerVisible"
+      title="用例详情"
+      direction="rtl"
+      :size="drawerWidth"
+      :with-header="true"
+      :resizable="true"
+      class="detail-drawer"
+    >
+      <div class="drawer-content">
+        <!-- 顶部信息栏 -->
+        <div class="detail-header">
+          <div class="detail-title">
+            <h2>{{ selectedTestCaseRow?.case_name || '未选择用例' }}</h2>
+            <p class="sub-title">ID: {{ selectedTestCaseRow?.id || '-' }} | commitID:
+              {{ selectedTestCaseRow.case_commit_id || '-' }}</p>
+          </div>
+        </div>
+
+        <!-- 代码预览区域 -->
+        <div class="code-panel">
+          <div class="panel-card code-card">
+            <div class="code-header">
+              <h3 class="panel-title">
+                <el-icon :size="18" class="panel-icon">
+                  <Document/>
+                </el-icon>
+                代码预览
+              </h3>
+            </div>
+            <div class="code-content-wrapper">
+            <pre v-if="!selectedTestCaseContent.includes('加载中')">
+              <code
+                class="code-content"
+                :class="selectedTestCaseRow?.case_type === 'pytest' ? 'language-python' : 'language-java'"
+                ref="codeRef"
+              >{{ selectedTestCaseContent || '无代码内容' }}</code>
+            </pre>
+              <div v-else class="code-loading">
+                <el-icon class="loading-spinner is-loading">
+                  <Loading/>
+                </el-icon>
+                <p>加载代码中...</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 抽屉底部按钮 -->
+      <template #footer>
+        <div class="drawer-actions">
+          <el-button
+            type="default"
+            @click="testCaseDrawerVisible = false"
+            class="btn-secondary"
+          >
+            关闭
+          </el-button>
+        </div>
+      </template>
+    </el-drawer>
+
   </div>
 </template>
 
@@ -474,6 +559,12 @@
 import {onMounted, reactive, ref} from 'vue'
 import {useRoute} from 'vue-router'
 import {ElMessage, ElMessageBox} from 'element-plus'
+import {getTestCaseContentDetail} from '@/network/api.js';
+import hljs from 'highlight.js/lib/core';
+import python from 'highlight.js/lib/languages/python';
+import java from 'highlight.js/lib/languages/java';
+import 'highlight.js/styles/a11y-dark.css'; // 或者你喜欢的其他主题
+import {nextTick} from 'vue';
 import {
   Search,
   Refresh,
@@ -486,6 +577,9 @@ import {
 } from '@element-plus/icons-vue'
 import {getTestTaskList, getTestTaskDetail} from '@/network/api.js'
 
+// 注册语言
+hljs.registerLanguage('python', python);
+hljs.registerLanguage('java', java);
 // 路由参数
 const route = useRoute()
 
@@ -511,7 +605,13 @@ const pagination = reactive({
 const detailDrawerVisible = ref(false)
 const detailLoading = ref(false)
 const selectedTask = ref(null)
+const drawerWidth = ref('50%')
+const codeRef = ref(null);
 
+// 用例信息抽屉相关状态
+const testCaseDrawerVisible = ref(false);
+const selectedTestCaseContent = ref('');
+const selectedTestCaseRow = ref(null);
 // 单元格样式函数
 const cellStyle = ({rowIndex}) => {
   return {
@@ -624,6 +724,7 @@ const handleCloseDetailDrawer = () => {
   detailDrawerVisible.value = false
   selectedTask.value = null
 }
+
 
 // 打开报告
 const openReport = (job) => {
@@ -742,6 +843,49 @@ const isValidJobResult = (jobResult) => {
     typeof jobResult.total === 'number' &&
     typeof jobResult.successful === 'number'
   );
+};
+
+const openTestCaseDetail = async (row) => {
+  selectedTestCaseRow.value = row;
+  selectedTestCaseContent.value = '加载中...';
+  testCaseDrawerVisible.value = true;
+
+  try {
+    const res = await getTestCaseContentDetail({
+      case_uuid: row.case_uuid,
+      case_commit_id: row.case_commit_id
+    });
+
+    if (res.code === 0) {
+      selectedTestCaseContent.value = res.data.case_content || '无内容';
+      nextTick(() => {
+        if (codeRef.value) {
+          codeRef.value.classList.remove('hljs');
+          codeRef.value.removeAttribute('data-highlighted');
+          console.log('codeRef:', codeRef.value);
+          // 获取原始内容并进行高亮处理
+          const originalContent = selectedTestCaseContent.value || '无代码内容';
+          const language = selectedTestCaseRow.value?.case_type === 'pytest' ? 'python' : 'java';
+          const highlighted = hljs.highlight(originalContent, {language}).value;
+
+          // 添加行号
+          codeRef.value.innerHTML = addLineNumbers(highlighted);
+        }
+      });
+    } else {
+      selectedTestCaseContent.value = '获取内容失败: ' + (res.message || '未知错误');
+    }
+  } catch (error) {
+    selectedTestCaseContent.value = '获取内容失败: ' + error.message;
+  }
+};
+
+
+const addLineNumbers = (code) => {
+  const lines = code.split('\n');
+  return lines.map((line, index) =>
+    `<span class="line-number">${index + 1}</span>${line}`
+  ).join('\n');
 };
 
 
@@ -1413,4 +1557,231 @@ const isValidJobResult = (jobResult) => {
   text-align: center;
   padding: 10px 0;
 }
+
+/* 用例详情抽屉样式 */
+.detail-drawer {
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.15);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+:deep(.detail-drawer .el-drawer__header) {
+  display: none; /* 隐藏默认标题栏 */
+}
+
+:deep(.detail-drawer .el-drawer__body) {
+  padding: 24px;
+  overflow: hidden;
+}
+
+.drawer-content {
+  height: calc(100vh - 120px);
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.detail-header {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #e2e8f0;
+  margin-bottom: 0;
+}
+
+.detail-title h2 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: #1e293b;
+  line-height: 1.3;
+}
+
+.sub-title {
+  margin: 4px 0 0 0;
+  font-size: 14px;
+  color: #64748b;
+}
+
+.code-panel {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow: hidden;
+  margin-top: 10px;
+}
+
+.panel-card {
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  overflow: hidden;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  flex-shrink: 0;
+}
+
+.panel-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+}
+
+.code-card {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  background-color: #1e1e1e;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.code-card .panel-title {
+  background: linear-gradient(to right, #1e293b, #0f172a);
+  color: #e2e8f0;
+  border-bottom: 1px solid #334155;
+  padding: 12px 10px;
+}
+
+.code-card .panel-icon {
+  color: #94a3b8;
+}
+
+.code-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 15px;
+}
+
+.panel-title {
+  margin: 0;
+  padding: 16px 20px;
+  font-size: 16px;
+  font-weight: 600;
+  color: #1e293b;
+  border-bottom: 1px solid #f1f5f9;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.panel-icon {
+  color: #3b82f6;
+}
+
+.code-content-wrapper {
+  flex: 1;
+  overflow: auto;
+  padding: 0 15px 15px 15px;
+  position: relative;
+}
+
+.code-content {
+  display: block;
+  padding: 5px 15px 15px 15px;
+  overflow-x: auto;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #dadde5;
+  opacity: 0.95;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  white-space: pre;
+  min-width: fit-content;
+  margin: 0;
+}
+
+.code-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #94a3b8;
+  gap: 12px;
+}
+
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  color: #3b82f6;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+:deep(.detail-drawer .el-drawer__footer) {
+  padding: 10px 24px;
+  border-top: 1px solid #e2e8f0;
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  background-color: #ffffff;
+  border-radius: 0 0 0 12px;
+}
+
+.drawer-actions {
+  display: flex;
+  gap: 12px;
+  width: 100%;
+  justify-content: flex-end;
+}
+
+.btn-secondary {
+  padding: 8px 20px;
+  font-size: 14px;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.btn-secondary:hover {
+  background-color: #f1f5f9;
+  transform: translateY(-2px);
+}
+
+.code-content :deep(.line-number),
+.fullscreen-code-content :deep(.line-number) {
+  display: inline-block;
+  width: 30px;
+  padding-right: 10px;
+  text-align: right;
+  color: #858585;
+  user-select: none;
+  border-right: 1px solid #444;
+  margin-right: 10px;
+  opacity: 0.8;
+  font-size: 12px;
+}
+
+.code-content {
+  display: block;
+  padding: 5px 15px 15px 15px;
+  overflow-x: auto;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #dadde5;
+  opacity: 0.95;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  white-space: pre;
+  min-width: fit-content;
+  margin: 0;
+}
+
+
 </style>

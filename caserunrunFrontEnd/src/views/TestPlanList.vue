@@ -676,10 +676,21 @@
                         <div class="card-details">
                           <div class="case-name">{{ item.case_name }}</div>
                           <div class="card-footer">
-                            <div class="case-author">作者:
-                              {{
+                            <div class="case-author">
+                              作者: {{
                                 item.case_author?.nickname || item.case_author?.username || '未知'
                               }}
+                            </div>
+                            <div class="card-actions">
+                              <!-- 新增：查看详情按钮 -->
+                              <el-button
+                                type="primary"
+                                size="small"
+                                link
+                                @click.stop="showCaseDetail(item)"
+                              >
+                                查看详情
+                              </el-button>
                             </div>
                           </div>
                         </div>
@@ -895,6 +906,38 @@
         </div>
       </div>
     </el-drawer>
+    <!-- 用例详情抽屉 -->
+    <el-drawer
+      v-model="caseDetailVisible"
+      :title="`用例详情 - ${selectedCase?.case_name || '未命名'}`"
+      direction="rtl"
+      :size="drawerWidth"
+      :before-close="handleCloseCaseDetail"
+    >
+      <div class="drawer-content">
+        <!-- 用例基本信息 -->
+        <div class="case-info">
+          <p><strong>用例名称：</strong>{{ selectedCase?.case_name }}</p>
+          <p><strong>作者：</strong>{{
+              selectedCase?.case_author?.nickname || selectedCase?.case_author?.username || '未知'
+            }}</p>
+          <p><strong>路径：</strong>{{ selectedCase?.case_path }}</p>
+        </div>
+
+        <!-- 用例内容 -->
+        <div class="code-content" v-loading="caseDetailLoading">
+          <pre v-if="selectedCaseContent"><code></code></pre>
+          <div v-else class="no-content">暂无内容</div>
+        </div>
+      </div>
+
+      <!-- 抽屉底部按钮 -->
+      <template #footer>
+        <el-button @click="caseDetailVisible = false">关闭</el-button>
+      </template>
+    </el-drawer>
+
+
   </div>
 </template>
 
@@ -905,6 +948,11 @@ import {CronExpressionParser} from 'cron-parser';
 import {ElEmpty, ElMessage, ElMessageBox} from 'element-plus'
 import {Edit, VideoPlay, Operation, Delete} from '@element-plus/icons-vue'
 import {Plus, Refresh, Search, Check, InfoFilled, CloseBold} from '@element-plus/icons-vue'
+import hljs from 'highlight.js/lib/core';
+import python from 'highlight.js/lib/languages/python';
+import java from 'highlight.js/lib/languages/java';
+import 'highlight.js/styles/a11y-dark.css';
+
 import {
   createTestPlan,
   deleteTestPlan,
@@ -915,8 +963,12 @@ import {
   updateTestPlan,
   batchAddTestCaseToPlan,
   clearTestCaseFromPlan,
-  triggerTestPlan, clearInvalidTestCaseFromPlan
+  triggerTestPlan, clearInvalidTestCaseFromPlan, getTestCaseContentDetail
 } from '@/network/api.js'
+
+// 注册语言
+hljs.registerLanguage('python', python);
+hljs.registerLanguage('java', java);
 
 // 路由参数
 const route = useRoute()
@@ -933,7 +985,7 @@ const invalidCases = ref([])
 const saveLoading = ref(false) // 保存用例加载状态
 const clearLoading = ref(false) // 清空用例加载状态
 const lastOpenedPlanId = ref(null)
-
+const drawerWidth = ref('80%')
 
 // 用例选择相关
 const testCaseList = ref([])
@@ -945,6 +997,17 @@ const casePagination = reactive({
   page_size: 50,
   total: 0
 })
+
+// 用例详情弹窗可见性
+const caseDetailVisible = ref(false);
+const caseDetailLoading = ref(false);
+
+// 当前选中的用例信息
+const selectedCase = ref(null);
+
+// 当前选中的用例内容
+const selectedCaseContent = ref('');
+
 
 const submitLoading = ref(false)
 
@@ -1439,9 +1502,6 @@ const validateCronExpression = (rule, value, callback) => {
 // 初始化调用
 initCronForm();
 
-
-// 抽屉宽度
-const drawerWidth = ref('80%')
 
 // 修复滚动问题：保存原始body样式
 const originalBodyStyle = ref({})
@@ -2320,6 +2380,58 @@ const handleCaseCurrentChange = (val) => {
   casePagination.page_num = val
   fetchTestCaseList()
 }
+
+// 展示用例详情
+const showCaseDetail = async (item) => {
+  caseDetailLoading.value = true; // 开始加载
+  caseDetailVisible.value = true;
+  try {
+    const res = await getTestCaseContentDetail({
+      case_uuid: item.case_uuid,
+      case_commit_id: item.case_commit_id
+    });
+
+    if (res.code === 0) {
+      selectedCaseContent.value = res.data.case_content || '暂无内容';
+      selectedCase.value = item;
+
+      nextTick(() => {
+        const codeBlock = document.querySelector('.code-content pre code');
+        if (codeBlock) {
+          const language = item.case_type === 'pytest' ? 'python' : 'java';
+          const highlighted = hljs.highlight(selectedCaseContent.value, {language}).value;
+          codeBlock.innerHTML = addLineNumbers(highlighted);
+        }
+      });
+
+    } else {
+      ElMessage.error(res.message || '获取用例详情失败');
+    }
+  } catch (error) {
+    console.error('获取用例详情异常:', error);
+    ElMessage.error('获取用例详情失败，请重试');
+  } finally {
+    caseDetailLoading.value = false; // 加载完成
+  }
+};
+
+
+const addLineNumbers = (code) => {
+  const lines = code.split('\n');
+  return lines.map((line, index) =>
+    `<span class="line-number">${index + 1}</span>${line}`
+  ).join('\n');
+};
+
+
+// 关闭抽屉
+const handleCloseCaseDetail = () => {
+  caseDetailVisible.value = false;
+  caseDetailLoading.value = false;
+  selectedCase.value = null;
+  selectedCaseContent.value = '';
+};
+
 </script>
 
 <style scoped>
@@ -3701,7 +3813,6 @@ const handleCaseCurrentChange = (val) => {
   gap: 4px;
 }
 
-.pagination-container
 .time-item {
   font-size: 13px;
   color: chocolate;
@@ -3758,6 +3869,66 @@ const handleCaseCurrentChange = (val) => {
   border: 1px solid rgba(235, 238, 245, 0.5) !important;
   transition: all 0.3s ease;
 }
+
+.drawer-content {
+  padding: 20px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.case-info {
+  margin-bottom: 20px;
+  padding: 15px;
+  background: #f5f7fa;
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+.case-info p {
+  margin: 8px 0;
+}
+
+.code-content :deep(.line-number),
+.fullscreen-code-content :deep(.line-number) {
+  display: inline-block;
+  width: 30px;
+  padding-right: 10px;
+  text-align: right;
+  color: #858585;
+  user-select: none;
+  border-right: 1px solid #444;
+  margin-right: 10px;
+  opacity: 0.8;
+  font-size: 12px;
+}
+
+.code-content {
+  display: block;
+  padding: 5px 15px 15px 15px;
+  overflow-x: auto;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #dadde5;
+  opacity: 0.95;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  white-space: pre;
+  min-width: fit-content;
+  margin: 0;
+}
+
+
+.no-content {
+  text-align: center;
+  color: #909399;
+  font-size: 14px;
+  padding: 20px;
+}
+
 </style>
 
 
