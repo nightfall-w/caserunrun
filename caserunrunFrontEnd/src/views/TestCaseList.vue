@@ -1551,13 +1551,6 @@ const getFileNameFromPath = (path) => {
   margin: 0;
 }
 
-/* 强制清除代码块中的 text-shadow */
-.code-content,
-.code-content code,
-.code-content pre {
-  text-shadow: none !important;
-}
-
 .code-loading {
   display: flex;
   flex-direction: column;
