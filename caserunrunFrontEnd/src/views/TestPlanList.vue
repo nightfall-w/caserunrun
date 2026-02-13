@@ -689,7 +689,7 @@
                                 link
                                 @click.stop="showCaseDetail(item)"
                               >
-                                查看详情
+                                详情
                               </el-button>
                             </div>
                           </div>
@@ -917,11 +917,48 @@
       <div class="drawer-content">
         <!-- 用例基本信息 -->
         <div class="case-info">
-          <p><strong>用例名称：</strong>{{ selectedCase?.case_name }}</p>
-          <p><strong>作者：</strong>{{
-              selectedCase?.case_author?.nickname || selectedCase?.case_author?.username || '未知'
-            }}</p>
-          <p><strong>路径：</strong>{{ selectedCase?.case_path }}</p>
+          <div class="case-info-item">
+            <div class="icon">
+              <Document/>
+            </div>
+            <div>
+              <div class="label">用例名称</div>
+              <div class="value">{{ selectedCase?.case_name || '未知' }}</div>
+            </div>
+          </div>
+          <div class="case-info-item">
+            <div class="icon">
+              <User/>
+            </div>
+            <div>
+              <div class="label">作者</div>
+              <div class="value">
+                {{
+                  selectedCase?.case_author?.nickname || selectedCase?.case_author?.username || '未知'
+                }}
+              </div>
+            </div>
+          </div>
+          <div class="case-info-item">
+            <div class="icon">
+              <Link/>
+            </div>
+            <div>
+              <div class="label">路径</div>
+              <div class="value">{{ selectedCase?.case_path || '—' }}</div>
+            </div>
+          </div>
+          <div class="case-info-item">
+            <div class="icon">
+              <PriceTag/>
+            </div>
+            <div>
+              <div class="label">类型</div>
+              <div class="value">
+                {{ selectedCase?.case_type === 'pytest' ? 'Python/Pytest' : 'Java/TestNG' }}
+              </div>
+            </div>
+          </div>
         </div>
 
         <!-- 用例内容 -->
@@ -946,7 +983,16 @@ import {nextTick, onBeforeMount, onMounted, reactive, ref, watch} from 'vue'
 import {useRoute} from 'vue-router'
 import {CronExpressionParser} from 'cron-parser';
 import {ElEmpty, ElMessage, ElMessageBox} from 'element-plus'
-import {Edit, VideoPlay, Operation, Delete} from '@element-plus/icons-vue'
+import {
+  Edit,
+  VideoPlay,
+  Operation,
+  Delete,
+  Document,
+  User,
+  Link,
+  PriceTag
+} from '@element-plus/icons-vue'
 import {Plus, Refresh, Search, Check, InfoFilled, CloseBold} from '@element-plus/icons-vue'
 import hljs from 'highlight.js/lib/core';
 import python from 'highlight.js/lib/languages/python';
@@ -3118,7 +3164,7 @@ const handleCloseCaseDetail = () => {
   border-radius: 14px;
   font-size: 13px;
   box-shadow: 0 4px 8px rgba(103, 194, 58, 0.3);
-  margin-left: 8px;
+  margin-right: 4px;
   flex-shrink: 0;
 }
 
@@ -3871,7 +3917,6 @@ const handleCloseCaseDetail = () => {
 }
 
 .drawer-content {
-  padding: 20px;
   height: 100%;
   display: flex;
   flex-direction: column;
@@ -3879,37 +3924,137 @@ const handleCloseCaseDetail = () => {
 
 .case-info {
   margin-bottom: 20px;
-  padding: 15px;
-  background: #f5f7fa;
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+  border: 1px solid #e5e7eb;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+}
+
+.case-info-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px;
   border-radius: 8px;
+  background: #f9fafb;
+  transition: all 0.2s ease;
+}
+
+.case-info-item:hover {
+  background: #f1f5f9;
+  transform: translateY(-1px);
+}
+
+.case-info-item .icon {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #667eea;
   font-size: 14px;
 }
 
-.case-info p {
-  margin: 8px 0;
+.case-info-item .label {
+  font-size: 13px;
+  color: #64748b;
+  font-weight: 500;
+  margin-bottom: 4px;
 }
 
-.code-content :deep(.line-number),
-.fullscreen-code-content :deep(.line-number) {
+.case-info-item .value {
+  font-size: 15px;
+  color: #1e293b;
+  font-weight: 600;
+  line-height: 1.4;
+  word-break: break-all;
+}
+
+.detail-header {
+  padding: 24px 24px 16px;
+  background: linear-gradient(135deg, #f8fafc 0%, #edf2f7 100%);
+  border-bottom: 1px solid #e5e7eb;
+  position: relative;
+}
+
+.detail-header::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 4px;
+  height: 100%;
+  background: linear-gradient(to bottom, #667eea, #764ba2);
+  border-radius: 4px 0 0 4px;
+}
+
+.detail-title h2 {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+  color: #1e293b;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.detail-title h2::before {
+  content: '';
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  flex-shrink: 0;
+}
+
+.detail-title .sub-title {
+  margin: 8px 0 0;
+  font-size: 14px;
+  color: #64748b;
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.sub-title > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 10px;
+  background: #f1f5f9;
+  border-radius: 6px;
+  font-weight: 500;
+  color: #475569;
+  font-size: 12px;
+}
+
+
+.code-content :deep(.line-number) {
   display: inline-block;
   width: 30px;
   padding-right: 10px;
   text-align: right;
-  color: #858585;
+  color: #858585 !important; /* 行号颜色 */
   user-select: none;
-  border-right: 1px solid #444;
+  border-right: 1px solid #444 !important; /* 行号分隔线 */
   margin-right: 10px;
   opacity: 0.8;
   font-size: 12px;
 }
 
 .code-content {
+  background-color: #000000 !important; /* 深色背景 */
+  color: #dadde5 !important; /* 浅色文字 */
   display: block;
   padding: 5px 15px 15px 15px;
   overflow-x: auto;
   font-size: 13px;
   line-height: 1.5;
-  color: #dadde5;
   opacity: 0.95;
   border-radius: 8px;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
@@ -3929,6 +4074,20 @@ const handleCloseCaseDetail = () => {
   padding: 20px;
 }
 
+:deep(.detail-drawer) {
+  border-radius: 16px !important;
+  overflow: hidden;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15) !important;
+}
+
+/* 隐藏默认标题栏 */
+:deep(.detail-drawer .el-drawer__header) {
+  display: none;
+}
+
+:deep(.el-card) {
+  --el-card-padding: 16px; /* 自定义内边距，例如 16px */
+}
 </style>
 
 

@@ -1751,27 +1751,27 @@ const addLineNumbers = (code) => {
   transform: translateY(-2px);
 }
 
-.code-content :deep(.line-number),
-.fullscreen-code-content :deep(.line-number) {
+.code-content :deep(.line-number) {
   display: inline-block;
   width: 30px;
   padding-right: 10px;
   text-align: right;
-  color: #858585;
+  color: #858585 !important; /* 行号颜色 */
   user-select: none;
-  border-right: 1px solid #444;
+  border-right: 1px solid #444 !important; /* 行号分隔线 */
   margin-right: 10px;
   opacity: 0.8;
   font-size: 12px;
 }
 
 .code-content {
+  background-color: #000000 !important; /* 深色背景 */
+  color: #dadde5 !important; /* 浅色文字 */
   display: block;
   padding: 5px 15px 15px 15px;
   overflow-x: auto;
   font-size: 13px;
   line-height: 1.5;
-  color: #dadde5;
   opacity: 0.95;
   border-radius: 8px;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
@@ -1781,6 +1781,13 @@ const addLineNumbers = (code) => {
   white-space: pre;
   min-width: fit-content;
   margin: 0;
+}
+
+/* 强制清除代码块中的 text-shadow */
+.code-content,
+.code-content code,
+.code-content pre {
+  text-shadow: none !important;
 }
 
 
