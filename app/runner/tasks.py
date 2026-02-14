@@ -187,7 +187,8 @@ def update_task_status(task_id: int, db: Session):
                 logger.info(f"任务状态更新中2: {task_id},task_result:{task_result}")
                 task.task_result = task_result
                 db.commit()
-                logger.info(f"任务状态更新完成: {task_id}")
+                result = db.query(TestTaskModel).filter(TestTaskModel.id == task_id).first().task_result
+                logger.info(f"任务状态更新完成: {result}")
 
             except Exception as e:
                 # 如果出现异常，回滚事务
