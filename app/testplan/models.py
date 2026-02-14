@@ -183,6 +183,8 @@ class TaskJobModel(Base):
     case_path = Column(String(400), nullable=False, comment="case路径")
     case_package = Column(String(400), nullable=False, comment="case包名")
     case_type = Column(String(20), nullable=False, comment="case类型")
+    case_level = Column(String(5), nullable=False, comment="case等级")
+    specific_type = Column(String(20), nullable=False, comment="case测试类型")
     report_path = Column(String(400), nullable=False, comment="报告路径")
     case_function_list = Column(JSON, default=[], nullable=True, comment="case方法列表")
     job_status = Column(String(20), nullable=False, comment="作业状态")

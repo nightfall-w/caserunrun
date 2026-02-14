@@ -803,7 +803,7 @@ const getCaseLevelTagType = (level) => {
 /* 核心修复：代码内容行距与行号完全一致 */
 .code-content {
   display: block;
-  padding: 3px 20px;
+  padding: 0 20px;
   font-size: 13px;
   line-height: 22px; /* 和行号的line-height一致 */
   color: #dadde5;
