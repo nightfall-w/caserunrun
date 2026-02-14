@@ -587,13 +587,14 @@ class TestPlanCRUD:
     def get_task_jobs(self, task_id: int) -> list:
         nickname_cache = {}
         jobs = []
-        for job in self.get_task_jobs(task_id):
+        jobs_query = self.db.query(TaskJobModel).filter(TaskJobModel.task_id == task_id).all()
+        for job in jobs_query:
             username = job.case_author
             if username not in nickname_cache:
                 nickname_cache[username] = get_nickname_by_username(db=self.db, username=username)
             nickname = nickname_cache[username]
             job = model_to_dict(job)
-            job.case_author = {
+            job['case_author'] = {
                 "username": username,
                 "nickname": nickname
             }
