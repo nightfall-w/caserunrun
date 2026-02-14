@@ -299,19 +299,19 @@
             multiple
             filterable
             remote
+            lazy
             :remote-method="searchUsersForCreate"
             :loading="createSearchLoading"
             placeholder="请输入用户名或昵称搜索用户"
             class="w-full"
             :multiple-limit="3"
-            @focusout="handleSelectFocusout"
             value-key="username"
           >
             <el-option
               v-for="user in createUserSearchResults"
               :key="user.username"
               :label="`${user.nickname} (${user.username})`"
-              :value="{ username: user.username, nickname: user.nickname || user.username }"
+              :value="user"
             />
           </el-select>
           <div class="text-gray-500 text-xs mt-1">最多可选择3个管理员</div>
@@ -373,25 +373,24 @@
 
         <!-- 管理员选择 -->
         <el-form-item label="管理员" prop="manager" class="text-xs">
-          <!-- 管理员搜索输入框 -->
           <el-select
             v-model="selectedEditManagers"
             multiple
             filterable
             remote
+            lazy
             :remote-method="searchUsersForEdit"
             :loading="editSearchLoading"
             placeholder="请输入用户名或昵称搜索用户"
             class="w-full"
             :multiple-limit="3"
-            @focusout="handleSelectFocusout"
             value-key="username"
           >
             <el-option
               v-for="user in editUserSearchResults"
               :key="user.username"
               :label="`${user.nickname} (${user.username})`"
-              :value="{ username: user.username, nickname: user.nickname || user.username }"
+              :value="user"
             />
           </el-select>
           <div class="text-gray-500 text-xs mt-1">最多可选择3个管理员</div>
@@ -794,7 +793,9 @@ const deleteWorkspaceInfo = ref({
 const downgradeInfo = reactive({
   manager: '',
   workspace_id: '',
-  availableRoles: []
+  availableRoles: [],
+  resolve: null,
+  reject: null
 })
 const downgradeFormRef = ref()
 const downgradeForm = reactive({
@@ -867,7 +868,7 @@ const editForm = reactive({
   workspace_id: '',
   workspace_name: '',
   workspace_desc: '',
-  manager: [] // 箑理员字段
+  manager: [] // 管理员字段
 })
 
 // 编辑表单验证规则
@@ -889,15 +890,6 @@ const cardColors = [
   '#e53e3e', '#10b981', '#f56565', '#f6ad55', '#48bb78'
 ]
 
-// 监听selectedManagers变化，同步到createForm
-watch(selectedManagers, (newVal) => {
-  createForm.manager = newVal.map(m => m.username);
-});
-
-// 监听selectedEditManagers变化，同步到editForm
-watch(selectedEditManagers, (newVal) => {
-  editForm.manager = newVal.map(m => m.username);
-})
 
 // 获取当前用户信息
 const getCurrentUser = () => {
@@ -1073,38 +1065,35 @@ const searchUsersForEdit = async (query) => {
   }
 }
 
-// 处理下拉框失去焦点事件
-const handleSelectFocusout = () => {
-  // 下拉框失去焦点时清空搜索关键字
-  setTimeout(() => {
-    const selectRefs = document.querySelectorAll('.el-select input');
-    if (selectRefs.length > 0) {
-      selectRefs[selectRefs.length - 1].value = '';
-    }
-  }, 10);
-}
-
-// 打开创建工作空间对话框
+// 打开创建工作空间对话框 —— 终极不卡死版
+// 打开创建工作空间对话框 —— 修复验证失败版
 const openCreateDialog = async () => {
-  showCreateDialog.value = true;
+  // 1. 先清空所有状态
+  createForm.workspace_name = ''
+  createForm.workspace_desc = ''
+  createForm.manager = []
+  selectedManagers.value = []
+  createUserSearchResults.value = []
 
-  // 清空之前的数据
-  selectedManagers.value = [];
-  createUserSearchResults.value = [];
+  // 2. 打开弹窗
+  showCreateDialog.value = true
+  await nextTick()
 
-  // 获取当前用户信息
-  const currentUser = getCurrentUser();
-  if (currentUser) {
-    // 设置当前用户为默认管理员（使用对象格式以支持显示nickname）
+  // 3. 延迟赋值（确保select渲染完成）
+  setTimeout(() => {
+    const currentUser = getCurrentUser()
+    if (!currentUser) return
+
     const defaultManager = {
       username: currentUser.username,
       nickname: currentUser.nickname || currentUser.username
-    };
-    selectedManagers.value = [defaultManager];
+    }
 
-    // 将当前用户添加到搜索结果中以确保显示正确
-    createUserSearchResults.value = [defaultManager];
-  }
+    // 关键：同时给下拉选项和选中值赋值
+    createUserSearchResults.value = [defaultManager]
+    // 给v-model赋值，触发watch同步到createForm.manager
+    selectedManagers.value = [defaultManager]
+  }, 500)
 }
 
 // 创建工作空间
@@ -1112,7 +1101,10 @@ const handleCreate = async () => {
   if (!createFormRef.value) return
 
   try {
-    await createFormRef.value.validate()
+    // 手动触发全表单校验，确保所有字段都校验
+    const valid = await createFormRef.value.validate()
+    if (!valid) return // 校验失败直接返回
+
     createLoading.value = true
 
     // 构造请求参数
@@ -1122,6 +1114,7 @@ const handleCreate = async () => {
       manager: createForm.manager
     }
 
+    console.log('创建请求参数：', requestData); // 新增：打印参数，方便排查
     const res = await createWorkspace(requestData)
     if (res.code === 0) {
       ElMessage.success('创建成功')
@@ -1134,11 +1127,14 @@ const handleCreate = async () => {
       createUserSearchResults.value = []
       fetchWorkspaces()
     } else {
-      ElMessage.error(res.message || '创建失败')
+      ElMessage.error(res.message || '创建失败：接口返回错误')
     }
   } catch (error) {
+    console.error('创建失败详情：', error); // 新增：打印错误详情
     if (error.name !== 'ValidationError') {
-      ElMessage.error('创建失败')
+      ElMessage.error('创建失败：网络或服务器错误')
+    } else {
+      // 校验失败时不弹错误提示（Element会自动提示）
     }
   } finally {
     createLoading.value = false
@@ -1147,38 +1143,60 @@ const handleCreate = async () => {
 
 // 打开编辑对话框
 const openEditDialog = async (workspace) => {
-  // 填充编辑表单数据
+  console.log('openEditDialog:', workspace);
+
+  // 1. 先清空所有状态，避免残留数据导致渲染压力
+  editForm.workspace_id = ''
+  editForm.workspace_name = ''
+  editForm.workspace_desc = ''
+  editForm.manager = []
+  selectedEditManagers.value = []
+  editUserSearchResults.value = []
+
+  // 2. 先填充基础表单数据（非select部分）
   editForm.workspace_id = workspace.workspace_id
   editForm.workspace_name = workspace.workspace_name
   editForm.workspace_desc = workspace.workspace_desc
 
-  // 清空之前的数据
-  selectedEditManagers.value = [];
-  editUserSearchResults.value = [];
-
-  // 处理管理员数据
-  if (workspace.manager && Array.isArray(workspace.manager)) {
-    // 将 manager 转换为包含 username 和 nickname 的对象数组
-    const managerObjects = workspace.manager.map(m => ({
-      username: m.username,
-      nickname: m.nickname || m.username
-    }))
-
-    // 设置 selectedEditManagers 为对象数组（用于显示）
-    selectedEditManagers.value = [...managerObjects];
-
-    // 设置 editForm.manager 为 username 数组（用于提交）
-    editForm.manager = managerObjects.map(m => m.username);
-
-    // 将管理员添加到搜索结果中以确保显示正确
-    editUserSearchResults.value = [...managerObjects];
-  } else {
-    editForm.manager = []
-    selectedEditManagers.value = []
-  }
-
+  // 3. 先显示对话框，等待DOM完全渲染
   showEditDialog.value = true
+  await nextTick()
+
+  // 4. 延迟处理管理员数据（核心：避免select初始化时赋值）
+  setTimeout(() => {
+    // 处理管理员数据
+    if (workspace.manager && Array.isArray(workspace.manager)) {
+      // 将 manager 转换为包含 username 和 nickname 的对象数组
+      const managerObjects = workspace.manager.map(m => ({
+        username: m.username,
+        nickname: m.nickname || m.username
+      }))
+
+      // 先给搜索结果赋值（确保下拉选项能显示）
+      editUserSearchResults.value = [...managerObjects];
+
+      // 延迟赋值v-model（避免select校验循环）
+      setTimeout(() => {
+        selectedEditManagers.value = [...managerObjects];
+        editForm.manager = managerObjects.map(m => m.username);
+      }, 100);
+    } else {
+      editForm.manager = []
+      selectedEditManagers.value = []
+    }
+  }, 300);
 }
+
+// 恢复watch并优化：实时同步selectedManagers到createForm.manager
+watch(selectedManagers, (newVal) => {
+  // 把选中的管理员对象数组转换为username字符串数组
+  createForm.manager = newVal.map(m => m.username);
+}, {immediate: true});
+
+// 编辑对话框同理，同步selectedEditManagers到editForm.manager
+watch(selectedEditManagers, (newVal) => {
+  editForm.manager = newVal.map(m => m.username);
+}, {immediate: true});
 
 // 编辑工作空间
 const handleEdit = async () => {
@@ -1363,14 +1381,12 @@ const openDowngradeDialog = (manager, workspace_id) => {
     downgradeInfo.manager = manager;
     downgradeInfo.workspace_id = workspace_id;
     downgradeInfo.availableRoles = roles.value.filter(role => role.role_name !== 'ADMIN');
+    downgradeInfo.resolve = resolve;
+    downgradeInfo.reject = reject;
     downgradeForm.role_id = '';
 
     // 显示降级对话框
     showDowngradeDialog.value = true;
-
-    // 保存resolve和reject函数，以便在处理函数中调用
-    downgradeInfo.resolve = resolve;
-    downgradeInfo.reject = reject;
   });
 };
 
@@ -1395,12 +1411,13 @@ const handleDowngradeCancel = () => {
 const handleEditDialogClose = (done) => {
   ElMessageBox.confirm('确定要放弃编辑吗？已输入的内容将丢失')
     .then(() => {
-      // 重置表单
+      // 彻底清空所有相关状态
       editForm.workspace_id = ''
       editForm.workspace_name = ''
       editForm.workspace_desc = ''
       editForm.manager = []
       selectedEditManagers.value = []
+      editUserSearchResults.value = []
       done()
     })
     .catch(() => {
