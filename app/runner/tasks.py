@@ -430,6 +430,7 @@ def pytest_case_job_executor(workspace_id: int, plan_id: int, task_id: int, job_
             case_job.job_result = case_execute_result['case_result']
             case_job.report_path = case_execute_result['case_report']
             db.commit()
+            update_task_status(task_id, db)
             return f'存在失败case: {case_execute_result}'
         else:
             # case通过率等于100 说明全部执行成功
@@ -438,6 +439,7 @@ def pytest_case_job_executor(workspace_id: int, plan_id: int, task_id: int, job_
             case_job.job_result = case_execute_result['case_result']
             case_job.report_path = case_execute_result['case_report']
             db.commit()
+            update_task_status(task_id, db)
             return f'case全部执行成功: {case_execute_result}'
 
     except FunctionTimedOut:
@@ -464,6 +466,7 @@ def pytest_case_job_executor(workspace_id: int, plan_id: int, task_id: int, job_
                                       error_info=f"case执行超时,未能生成详细测试报告")
         case_job.report_path = report_url
         db.commit()
+        update_task_status(task_id, db)
         raise Exception(f'{case_job.case_name} 执行超时: {traceback.format_exc()}')
 
     except Exception:
@@ -489,154 +492,8 @@ def pytest_case_job_executor(workspace_id: int, plan_id: int, task_id: int, job_
                                       error_info=f"case执行异常,未能生成详细测试报告:{traceback.format_exc()}")
         case_job.report_path = report_url
         db.commit()
+        update_task_status(task_id, db)
         raise Exception(f'{case_job.case_name} 执行异常: {traceback.format_exc()}')
-
-
-@boost(BaseBoosterParams(
-    queue_name='testng_case_task_executor',
-    qps=1,
-    concurrent_num=50,
-    function_timeout=5
-))
-def testng_case_task_executor(workspace_id: int, plan_id: int, task_id: int):
-    """
-    【case计划串行执行器】
-    :param workspace_id: wtp用例库id
-    :param plan_id: 计划id
-    :param task_id: 任务id
-    :return: 结果/异常
-    """
-
-    def cancel_job(to_be_cancelled_job_list: list, _db: Session):
-        """
-        取消job
-        :param to_be_cancelled_job_list: 待取消的任务列表
-        :param _db 数据库session
-        :return:
-        """
-        for cancel_case_job in to_be_cancelled_job_list:
-            logger.info(f'取消任务: {cancel_case_job.case_name + "-----" + cancel_case_job.case_uuid}')
-            cancel_case_job.job_status = JobStatus.CANCELED
-            _db.commit()
-
-    # 获取task实例和jobs实例
-    db = next(get_sync_db())
-    case_task = db.query(TestTaskModel).filter(TestTaskModel.id == task_id).first()
-    if not case_task:
-        logger.error(f'任务不存在: {task_id}')
-        raise Exception(f'任务不存在: {task_id}')
-    case_task.task_status = TaskStatus.RUNNING
-    db.commit()
-
-    case_jobs = db.query(TaskJobModel).filter(TaskJobModel.task_id == task_id).all()
-
-    for index, case_job in enumerate(case_jobs):
-        logger.info(f'准备执行串行case:{case_job.case_name + "-----" + case_job.case_uuid}')
-
-        # 数据库不存在case信息 从gitlab获取 不保存到数据库
-        case_extra_info = GitCaseParser.parse_case_uuid(case_uuid=case_job.case_uuid)
-        case_job.job_status = JobStatus.RUNNING
-        db.commit()
-        try:
-            case_execute_result = TestNGCaseRunner.executor(
-                testplan_id=case_task.test_plan_id,
-                task_id=task_id, job_id=case_job.id,
-                workspace_id=workspace_id,
-                case_path=case_job.case_path,
-                case_name=case_job.case_name,
-                case_package=case_job.case_package,
-                project_id=case_extra_info["git_project_id"],
-                env=case_task.test_environment,
-                branch_name=case_extra_info["branch_name"],
-                case_uuid=case_job.case_uuid)
-            logger.info(f'{case_job.case_name} 执行结果: {case_execute_result}')
-
-            # 判断case执行结果
-            if case_execute_result['case_result']['successful'] < 100:
-                # case通过率小于100 说明存在失败case
-                logger.error(f'{case_job.case_name + "-----" + case_job.case_uuid} 存在失败case')
-                case_job.job_status = JobStatus.FAILED
-                case_job.job_result = case_execute_result['case_result']
-                case_job.report_path = case_execute_result['case_report']
-                db.commit()
-                if case_task.fail_stop:
-                    # 失败时停止 结束后续case执行
-                    cancel_job(case_jobs[index + 1:], db)
-                    raise Exception(f'{case_job.case_name} 执行失败,失败时终止: {traceback.format_exc()}')
-            else:
-                # case通过率等于100 说明全部执行成功
-                logger.info(f'{case_job} case全部执行成功')
-                case_job.job_status = JobStatus.SUCCESS
-                case_job.job_result = case_execute_result['case_result']
-                case_job.report_path = case_execute_result['case_report']
-                db.commit()
-                continue
-
-        except FunctionTimedOut:
-            # case执行时间超时
-            # logger.error(
-            #     f'{case_job} 执行超时: {traceback.format_exc()}')
-            case_job.job_status = JobStatus.TIMEOUT
-            db.commit()
-            logger.error(
-                f'job状态{case_job.job_status}')
-            db_case_info = db.query(TestNGCaseModel).filter(
-                TestNGCaseModel.case_uuid == case_job.case_uuid).first()
-
-            report_name = case_job.case_path.split('/')[-1].split('.')[0] + '.html'
-            report_dir = os.path.join(
-                REPORT_ROOT, str(workspace_id), str(plan_id), str(task_id), str(case_job.id))
-            report_html_path = os.path.join(report_dir, report_name)
-            report_url = os.path.join(REPORT_URL, str(workspace_id), str(plan_id), str(task_id), str(case_job.id),
-                                      report_name)
-            logger.info(f'生成错误报告: {report_html_path}')
-            create_error_html_report_file(workspace_id=workspace_id,
-                                          git_project_name=db_case_info.git_project_name,
-                                          case_type=CaseType.PYTEST,
-                                          case_path=case_job.case_path, case_name=case_job.case_name,
-                                          case_level=db_case_info.case_level,
-                                          case_author=db_case_info.case_author,
-                                          report_url=report_url,
-                                          report_path=report_html_path,
-                                          result=JobStatus.TIMEOUT,
-                                          error_info="case执行超时,未能生成详细测试报告")
-            cancel_job(case_jobs[index + 1:], _db=db)
-            case_job.report_path = report_url
-            db.commit()
-            raise Exception(f'{case_job.case_name} 执行超时: {traceback.format_exc()}')
-
-        except Exception:
-            # case执行异常
-            logger.error(f'{case_job.case_name} 执行异常: {traceback.format_exc()}')
-            case_job.job_status = JobStatus.EXCEPTION
-            db_case_info = db.query(TestNGCaseModel).filter(
-                TestNGCaseModel.case_uuid == case_job.case_uuid).first()
-
-            report_name = case_job.case_path.split('/')[-1].split('.')[0] + '.html'
-            report_dir = os.path.join(
-                REPORT_ROOT, str(workspace_id), str(plan_id), str(task_id), str(case_job.id))
-            report_html_path = os.path.join(report_dir, report_name)
-            report_url = os.path.join(REPORT_URL, str(workspace_id), str(plan_id), str(task_id), str(case_job.id),
-                                      report_name)
-            create_error_html_report_file(workspace_id=workspace_id,
-                                          git_project_name=db_case_info.git_project_name,
-                                          case_type=CaseType.PYTEST,
-                                          case_path=case_job.case_path, case_name=case_job.case_name,
-                                          case_level=db_case_info.case_level,
-                                          case_author=db_case_info.case_author,
-                                          report_url=report_url,
-                                          report_path=report_html_path,
-                                          result=JobStatus.EXCEPTION,
-                                          error_info=f"case执行异常,未能生成详细测试报告:{traceback.format_exc()}")
-            case_job.report_path = report_url
-            if case_task.fail_stop:
-                # 失败时停止 结束后续case执行
-                cancel_job(case_jobs[index + 1:], _db=db)
-                raise Exception(f'{case_job.case_name} 执行异常,失败时终止: {traceback.format_exc()}')
-            else:
-                continue
-
-    return f'测试任务: {task_id} 执行完成'
 
 
 @boost(BaseBoosterParams(
@@ -690,6 +547,7 @@ def testng_case_job_executor(workspace_id: int, plan_id: int, task_id: int, job_
             case_job.job_result = case_execute_result['case_result']
             case_job.report_path = case_execute_result['case_report']
             db.commit()
+            update_task_status(task_id, db)
             return f'存在失败case: {case_execute_result}'
         else:
             # case通过率等于100 说明全部执行成功
@@ -698,6 +556,7 @@ def testng_case_job_executor(workspace_id: int, plan_id: int, task_id: int, job_
             case_job.job_result = case_execute_result['case_result']
             case_job.report_path = case_execute_result['case_report']
             db.commit()
+            update_task_status(task_id, db)
             return f'case全部执行成功: {case_execute_result}'
 
     except FunctionTimedOut:
@@ -724,6 +583,7 @@ def testng_case_job_executor(workspace_id: int, plan_id: int, task_id: int, job_
                                       error_info=f"case执行超时,未能生成详细测试报告")
         case_job.report_path = report_url
         db.commit()
+        update_task_status(task_id, db)
         raise Exception(f'{case_job.case_name} 执行超时: {traceback.format_exc()}')
 
     except Exception:
@@ -749,4 +609,5 @@ def testng_case_job_executor(workspace_id: int, plan_id: int, task_id: int, job_
                                       error_info=f"case执行异常,未能生成详细测试报告:{traceback.format_exc()}")
         case_job.report_path = report_url
         db.commit()
+        update_task_status(task_id, db)
         raise Exception(f'{case_job.case_name} 执行异常: {traceback.format_exc()}')
