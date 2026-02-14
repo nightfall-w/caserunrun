@@ -173,8 +173,7 @@ def update_task_status(task_id: int, db: Session):
     logger.error(222222222)
     while True:
         logger.info(f"lock_key1:{redis_cache_instance.get(lock_key)}")
-        if not redis_cache_instance.get(lock_key):
-            redis_cache_instance.set(lock_key, 1, expire=5)
+        if redis_cache_instance.setnx(lock_key, 1, expire=5):
             logger.info(f"lock_key2:{redis_cache_instance.get(lock_key)}")
             try:
                 # 直接使用传入的数据库会话

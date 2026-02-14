@@ -49,6 +49,14 @@ class RedisCache:
             value = json.dumps(value)
         client.set(key, value, ex=expire)
 
+    def setnx(self, key: str, value: Any, expire: Optional[int] = REDIS_TIMEOUT):
+        """设置缓存，如果 key 不存在则设置（自动序列化 Python 对象为 JSON）"""
+        client = self.client
+        if isinstance(value, (dict, list, tuple)):
+            value = json.dumps(value)
+        client.setnx(key, value)
+        client.expire(key, expire)
+
     def get(self, key: str) -> Optional[Any]:
         """获取缓存（自动反序列化 JSON 为 Python 对象）"""
         client = self.client
