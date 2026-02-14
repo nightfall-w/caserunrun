@@ -3825,37 +3825,6 @@ const closeCaseDetail = () => {
   transition: all 0.3s ease;
 }
 
-.drawer-content {
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-}
-
-.case-info {
-  margin-bottom: 20px;
-  background: #ffffff;
-  border-radius: 12px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
-  border: 1px solid #e5e7eb;
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 16px;
-}
-
-.case-info-item {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  padding: 12px;
-  border-radius: 8px;
-  background: #f9fafb;
-  transition: all 0.2s ease;
-}
-
-.case-info-item:hover {
-  background: #f1f5f9;
-  transform: translateY(-1px);
-}
 
 .case-info-item .icon {
   flex-shrink: 0;
@@ -3883,23 +3852,6 @@ const closeCaseDetail = () => {
   word-break: break-all;
 }
 
-.detail-header {
-  padding: 24px 24px 16px;
-  background: linear-gradient(135deg, #f8fafc 0%, #edf2f7 100%);
-  border-bottom: 1px solid #e5e7eb;
-  position: relative;
-}
-
-.detail-header::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 4px;
-  height: 100%;
-  background: linear-gradient(to bottom, #667eea, #764ba2);
-  border-radius: 4px 0 0 4px;
-}
 
 .detail-title h2 {
   margin: 0;
@@ -3975,13 +3927,6 @@ const closeCaseDetail = () => {
   margin: 0;
 }
 
-
-.no-content {
-  text-align: center;
-  color: #909399;
-  font-size: 14px;
-  padding: 20px;
-}
 
 :deep(.detail-drawer) {
   border-radius: 16px !important;

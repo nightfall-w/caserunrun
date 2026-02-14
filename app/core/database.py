@@ -28,8 +28,8 @@ DB_NAME = os.getenv("DB_NAME", "polymericTest")
 # 同步引擎和session工厂
 SYNC_DATABASE_URL = f"mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 SYNC_ENGINE = create_engine(SYNC_DATABASE_URL,
-                            pool_size=10,  # 连接池大小（500过大，建议10-20，根据并发调整）
-                            max_overflow=20,  # 超过pool_size时允许临时创建的连接数
+                            pool_size=100,  # 连接池大小（500过大，建议10-20，根据并发调整）
+                            max_overflow=200,  # 超过pool_size时允许临时创建的连接数
                             pool_pre_ping=True,  # 检测连接可用性（避免失效连接）
                             pool_recycle=3600,  # 连接回收时间（避免MySQL自动断开连接）
                             echo=False  # 生产环境关闭SQL日志输出

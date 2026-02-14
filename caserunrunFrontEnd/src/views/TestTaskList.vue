@@ -423,6 +423,12 @@
                           }}</span>
                       </div>
                       <div class="result-item">
+                        <span class="result-label">忽略:</span>
+                        <span class="result-value ignored">{{
+                            scope.row.job_result?.ignored || 0
+                          }}</span>
+                      </div>
+                      <div class="result-item">
                         <span class="result-label">跳过:</span>
                         <span class="result-value skipped">{{
                             scope.row.job_result?.skipped || 0
@@ -778,17 +784,7 @@ const getProgressColor = (row) => {
 };
 
 const isValidJobResult = (jobResult) => {
-  if (!jobResult || typeof jobResult !== 'object') {
-    return false;
-  }
-  return (
-    typeof jobResult.passed === 'number' &&
-    typeof jobResult.failed === 'number' &&
-    typeof jobResult.error === 'number' &&
-    typeof jobResult.skipped === 'number' &&
-    typeof jobResult.total === 'number' &&
-    typeof jobResult.successful === 'number'
-  );
+  return !(!jobResult || typeof jobResult !== 'object');
 };
 
 // 打开用例详情的方法
@@ -1347,6 +1343,10 @@ const closeCaseDetail = () => {
 }
 
 .result-value.skipped {
+  color: #909399; /* 灰色 */
+}
+
+.result-value.ignored {
   color: #909399; /* 灰色 */
 }
 
