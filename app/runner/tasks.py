@@ -170,6 +170,7 @@ def update_task_status(task_id: int, db: Session):
     """
     redis_cache_instance = get_redis_cache()
     lock_key = f"task_lock:{task_id}"
+    logger.error(222222222)
     while True:
         if not redis_cache_instance.get(lock_key):
             redis_cache_instance.set(lock_key, 1, expire=5)
@@ -609,5 +610,6 @@ def testng_case_job_executor(workspace_id: int, plan_id: int, task_id: int, job_
                                       error_info=f"case执行异常,未能生成详细测试报告:{traceback.format_exc()}")
         case_job.report_path = report_url
         db.commit()
+        logger.error(1111111111111111111111111)
         update_task_status(task_id, db)
         raise Exception(f'{case_job.case_name} 执行异常: {traceback.format_exc()}')
