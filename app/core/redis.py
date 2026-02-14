@@ -54,8 +54,11 @@ class RedisCache:
         client = self.client
         if isinstance(value, (dict, list, tuple)):
             value = json.dumps(value)
-        client.setnx(key, value)
+        result = client.setnx(key, value)
+        if not result:
+            return False
         client.expire(key, expire)
+        return True
 
     def get(self, key: str) -> Optional[Any]:
         """获取缓存（自动反序列化 JSON 为 Python 对象）"""
