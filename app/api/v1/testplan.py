@@ -469,7 +469,7 @@ def get_test_task_detail(request: TestTaskDetailRequest, db: Session = Depends(g
         nickname = get_nickname_by_username(db=db, username=task.create_user)
         task_info = model_to_dict(task)
         task_info['creator'] = {"username": task.create_user, "nickname": nickname}
-        task_info['jobs'] = [model_to_dict(job) for job in jobs]
+        task_info['jobs'] = jobs
         return api_response(data=task_info)
     except Exception as e:
         logger.error(f"查询测试任务详情失败: {str(e)}")

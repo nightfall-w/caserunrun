@@ -584,7 +584,19 @@ class TestPlanCRUD:
         return task, jobs
 
     def get_task_jobs(self, task_id: int) -> list:
-        return self.db.query(TaskJobModel).filter(TaskJobModel.task_id == task_id).all()
+        nickname_cache = {}
+        jobs = []
+        for job in self.get_task_jobs(task_id):
+            username = job.case_author
+            if username not in nickname_cache:
+                nickname_cache[username] = get_nickname_by_username(db=self.db, username=username)
+            nickname = nickname_cache[username]
+            job.case_author = {
+                "username": username,
+                "nickname": nickname
+            }
+            jobs.append(job)
+        return jobs
 
 
 def get_test_plan_crud(db: Session) -> TestPlanCRUD:

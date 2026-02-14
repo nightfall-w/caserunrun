@@ -687,7 +687,7 @@
                                 type="primary"
                                 size="small"
                                 link
-                                @click.stop="showCaseDetail(item)"
+                                @click.stop="openCaseDetail(item)"
                               >
                                 详情
                               </el-button>
@@ -907,74 +907,14 @@
       </div>
     </el-drawer>
     <!-- 用例详情抽屉 -->
-    <el-drawer
-      v-model="caseDetailVisible"
-      :title="`用例详情 - ${selectedCase?.case_name || '未命名'}`"
-      direction="rtl"
-      :size="drawerWidth"
-      :before-close="handleCloseCaseDetail"
-    >
-      <div class="drawer-content">
-        <!-- 用例基本信息 -->
-        <div class="case-info">
-          <div class="case-info-item">
-            <div class="icon">
-              <Document/>
-            </div>
-            <div>
-              <div class="label">用例名称</div>
-              <div class="value">{{ selectedCase?.case_name || '未知' }}</div>
-            </div>
-          </div>
-          <div class="case-info-item">
-            <div class="icon">
-              <User/>
-            </div>
-            <div>
-              <div class="label">作者</div>
-              <div class="value">
-                {{
-                  selectedCase?.case_author?.nickname || selectedCase?.case_author?.username || '未知'
-                }}
-              </div>
-            </div>
-          </div>
-          <div class="case-info-item">
-            <div class="icon">
-              <Link/>
-            </div>
-            <div>
-              <div class="label">路径</div>
-              <div class="value">{{ selectedCase?.case_path || '—' }}</div>
-            </div>
-          </div>
-          <div class="case-info-item">
-            <div class="icon">
-              <PriceTag/>
-            </div>
-            <div>
-              <div class="label">类型</div>
-              <div class="value">
-                {{ selectedCase?.case_type === 'pytest' ? 'Python/Pytest' : 'Java/TestNG' }}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- 用例内容 -->
-        <div class="code-content" v-loading="caseDetailLoading">
-          <pre v-if="selectedCaseContent"><code></code></pre>
-          <div v-else class="no-content">暂无内容</div>
-        </div>
-      </div>
-
-      <!-- 抽屉底部按钮 -->
-      <template #footer>
-        <el-button @click="caseDetailVisible = false">关闭</el-button>
-      </template>
-    </el-drawer>
-
-
+    <!-- 引入 TestCaseDetailDrawer 组件 -->
+    <TestCaseDetailDrawer
+      :visible="caseDetailVisible"
+      @update:visible="caseDetailVisible = $event"
+      :test-case="selectedCase"
+      :test-case-content="selectedCaseContent"
+      @close="closeCaseDetail"
+    />
   </div>
 </template>
 
@@ -998,6 +938,7 @@ import hljs from 'highlight.js/lib/core';
 import python from 'highlight.js/lib/languages/python';
 import java from 'highlight.js/lib/languages/java';
 import 'highlight.js/styles/a11y-dark.css';
+import TestCaseDetailDrawer from '@/components/TestCaseDetailDrawer.vue'
 
 import {
   createTestPlan,
@@ -1044,16 +985,9 @@ const casePagination = reactive({
   total: 0
 })
 
-// 用例详情弹窗可见性
-const caseDetailVisible = ref(false);
-const caseDetailLoading = ref(false);
-
-// 当前选中的用例信息
-const selectedCase = ref(null);
-
-// 当前选中的用例内容
-const selectedCaseContent = ref('');
-
+const caseDetailVisible = ref(false)
+const selectedCase = ref(null)
+const selectedCaseContent = ref('')
 
 const submitLoading = ref(false)
 
@@ -2427,56 +2361,31 @@ const handleCaseCurrentChange = (val) => {
   fetchTestCaseList()
 }
 
-// 展示用例详情
-const showCaseDetail = async (item) => {
-  caseDetailLoading.value = true; // 开始加载
-  caseDetailVisible.value = true;
+// 打开用例详情的方法
+const openCaseDetail = async (row) => {
+  selectedCase.value = row
+  selectedCaseContent.value = '加载中...'
+  caseDetailVisible.value = true
+
   try {
     const res = await getTestCaseContentDetail({
-      case_uuid: item.case_uuid,
-      case_commit_id: item.case_commit_id
-    });
-
+      case_uuid: row.case_uuid,
+      case_commit_id: row.case_commit_id
+    })
     if (res.code === 0) {
-      selectedCaseContent.value = res.data.case_content || '暂无内容';
-      selectedCase.value = item;
-
-      nextTick(() => {
-        const codeBlock = document.querySelector('.code-content pre code');
-        if (codeBlock) {
-          const language = item.case_type === 'pytest' ? 'python' : 'java';
-          const highlighted = hljs.highlight(selectedCaseContent.value, {language}).value;
-          codeBlock.innerHTML = addLineNumbers(highlighted);
-        }
-      });
-
+      selectedCaseContent.value = res.data.case_content || '无内容'
     } else {
-      ElMessage.error(res.message || '获取用例详情失败');
+      selectedCaseContent.value = '获取内容失败: ' + (res.message || '未知错误')
     }
   } catch (error) {
-    console.error('获取用例详情异常:', error);
-    ElMessage.error('获取用例详情失败，请重试');
-  } finally {
-    caseDetailLoading.value = false; // 加载完成
+    selectedCaseContent.value = '获取内容失败: ' + error.message
   }
-};
+}
 
-
-const addLineNumbers = (code) => {
-  const lines = code.split('\n');
-  return lines.map((line, index) =>
-    `<span class="line-number">${index + 1}</span>${line}`
-  ).join('\n');
-};
-
-
-// 关闭抽屉
-const handleCloseCaseDetail = () => {
-  caseDetailVisible.value = false;
-  caseDetailLoading.value = false;
-  selectedCase.value = null;
-  selectedCaseContent.value = '';
-};
+// 关闭用例详情的方法
+const closeCaseDetail = () => {
+  caseDetailVisible.value = false
+}
 
 </script>
 
@@ -3164,7 +3073,7 @@ const handleCloseCaseDetail = () => {
   border-radius: 14px;
   font-size: 13px;
   box-shadow: 0 4px 8px rgba(103, 194, 58, 0.3);
-  margin-right: 4px;
+  margin-left: 8px;
   flex-shrink: 0;
 }
 
@@ -4078,11 +3987,6 @@ const handleCloseCaseDetail = () => {
   border-radius: 16px !important;
   overflow: hidden;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15) !important;
-}
-
-/* 隐藏默认标题栏 */
-:deep(.detail-drawer .el-drawer__header) {
-  display: none;
 }
 
 :deep(.el-card) {

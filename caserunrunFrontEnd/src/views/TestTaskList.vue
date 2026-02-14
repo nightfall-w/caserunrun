@@ -455,7 +455,7 @@
                       <el-button
                         size="small"
                         type="primary"
-                        @click="openTestCaseDetail(scope.row)"
+                        @click="openCaseDetail(scope.row)"
                         :disabled="!scope.row.case_uuid || !scope.row.case_commit_id"
                         :icon="Document"
                         class="view-case-button"
@@ -489,68 +489,13 @@
     </el-drawer>
 
     <!-- 用例详情抽屉 -->
-    <el-drawer
-      v-model="testCaseDrawerVisible"
-      title="用例详情"
-      direction="rtl"
-      :size="drawerWidth"
-      :with-header="true"
-      :resizable="true"
-      class="detail-drawer"
-    >
-      <div class="drawer-content">
-        <!-- 顶部信息栏 -->
-        <div class="detail-header">
-          <div class="detail-title">
-            <h2>{{ selectedTestCaseRow?.case_name || '未选择用例' }}</h2>
-            <p class="sub-title">ID: {{ selectedTestCaseRow?.id || '-' }} | commitID:
-              {{ selectedTestCaseRow.case_commit_id || '-' }}</p>
-          </div>
-        </div>
-
-        <!-- 代码预览区域 -->
-        <div class="code-panel">
-          <div class="panel-card code-card">
-            <div class="code-header">
-              <h3 class="panel-title">
-                <el-icon :size="18" class="panel-icon">
-                  <Document/>
-                </el-icon>
-                代码预览
-              </h3>
-            </div>
-            <div class="code-content-wrapper">
-            <pre v-if="!selectedTestCaseContent.includes('加载中')">
-              <code
-                class="code-content"
-                :class="selectedTestCaseRow?.case_type === 'pytest' ? 'language-python' : 'language-java'"
-                ref="codeRef"
-              >{{ selectedTestCaseContent || '无代码内容' }}</code>
-            </pre>
-              <div v-else class="code-loading">
-                <el-icon class="loading-spinner is-loading">
-                  <Loading/>
-                </el-icon>
-                <p>加载代码中...</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- 抽屉底部按钮 -->
-      <template #footer>
-        <div class="drawer-actions">
-          <el-button
-            type="default"
-            @click="testCaseDrawerVisible = false"
-            class="btn-secondary"
-          >
-            关闭
-          </el-button>
-        </div>
-      </template>
-    </el-drawer>
+    <TestCaseDetailDrawer
+      :visible="caseDetailVisible"
+      @update:visible="caseDetailVisible = $event"
+      :test-case="selectedCase"
+      :test-case-content="selectedCaseContent"
+      @close="closeCaseDetail"
+    />
 
   </div>
 </template>
@@ -558,13 +503,13 @@
 <script setup>
 import {onMounted, reactive, ref} from 'vue'
 import {useRoute} from 'vue-router'
-import {ElMessage, ElMessageBox} from 'element-plus'
+import {ElMessage} from 'element-plus'
 import {getTestCaseContentDetail} from '@/network/api.js';
 import hljs from 'highlight.js/lib/core';
 import python from 'highlight.js/lib/languages/python';
 import java from 'highlight.js/lib/languages/java';
 import 'highlight.js/styles/a11y-dark.css'; // 或者你喜欢的其他主题
-import {nextTick} from 'vue';
+import TestCaseDetailDrawer from '@/components/TestCaseDetailDrawer.vue'
 import {
   Search,
   Refresh,
@@ -609,9 +554,10 @@ const drawerWidth = ref('50%')
 const codeRef = ref(null);
 
 // 用例信息抽屉相关状态
-const testCaseDrawerVisible = ref(false);
-const selectedTestCaseContent = ref('');
-const selectedTestCaseRow = ref(null);
+const caseDetailVisible = ref(false)
+const selectedCase = ref(null)
+const selectedCaseContent = ref('')
+
 // 单元格样式函数
 const cellStyle = ({rowIndex}) => {
   return {
@@ -845,49 +791,31 @@ const isValidJobResult = (jobResult) => {
   );
 };
 
-const openTestCaseDetail = async (row) => {
-  selectedTestCaseRow.value = row;
-  selectedTestCaseContent.value = '加载中...';
-  testCaseDrawerVisible.value = true;
-
+// 打开用例详情的方法
+const openCaseDetail = async (row) => {
+  selectedCase.value = row
+  selectedCaseContent.value = '加载中...'
+  caseDetailVisible.value = true
+  console.log('openCaseDetail', row)
   try {
     const res = await getTestCaseContentDetail({
       case_uuid: row.case_uuid,
       case_commit_id: row.case_commit_id
-    });
-
+    })
     if (res.code === 0) {
-      selectedTestCaseContent.value = res.data.case_content || '无内容';
-      nextTick(() => {
-        if (codeRef.value) {
-          codeRef.value.classList.remove('hljs');
-          codeRef.value.removeAttribute('data-highlighted');
-          console.log('codeRef:', codeRef.value);
-          // 获取原始内容并进行高亮处理
-          const originalContent = selectedTestCaseContent.value || '无代码内容';
-          const language = selectedTestCaseRow.value?.case_type === 'pytest' ? 'python' : 'java';
-          const highlighted = hljs.highlight(originalContent, {language}).value;
-
-          // 添加行号
-          codeRef.value.innerHTML = addLineNumbers(highlighted);
-        }
-      });
+      selectedCaseContent.value = res.data.case_content || '无内容'
     } else {
-      selectedTestCaseContent.value = '获取内容失败: ' + (res.message || '未知错误');
+      selectedCaseContent.value = '获取内容失败: ' + (res.message || '未知错误')
     }
   } catch (error) {
-    selectedTestCaseContent.value = '获取内容失败: ' + error.message;
+    selectedCaseContent.value = '获取内容失败: ' + error.message
   }
-};
+}
 
-
-const addLineNumbers = (code) => {
-  const lines = code.split('\n');
-  return lines.map((line, index) =>
-    `<span class="line-number">${index + 1}</span>${line}`
-  ).join('\n');
-};
-
+// 关闭用例详情的方法
+const closeCaseDetail = () => {
+  caseDetailVisible.value = false
+}
 
 </script>
 
@@ -1781,13 +1709,6 @@ const addLineNumbers = (code) => {
   white-space: pre;
   min-width: fit-content;
   margin: 0;
-}
-
-/* 强制清除代码块中的 text-shadow */
-.code-content,
-.code-content code,
-.code-content pre {
-  text-shadow: none !important;
 }
 
 

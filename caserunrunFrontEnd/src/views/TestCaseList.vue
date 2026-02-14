@@ -186,13 +186,10 @@
         :row-style="{ transition: 'all 0.25s ease' }"
         border
       >
-
         <el-table-column prop="case_type" label="用例类型" width="90">
           <template #default="scope">
-            <el-tag
-              :type="scope.row.case_type === 'pytest' ? 'primary' : 'success'"
-              class="case-type-tag"
-            >
+            <el-tag :type="scope.row.case_type === 'pytest' ? 'primary' : 'success'"
+                    class="case-type-tag">
               {{ scope.row.case_type === 'pytest' ? 'Pytest' : 'TestNG' }}
             </el-tag>
           </template>
@@ -200,10 +197,8 @@
 
         <el-table-column prop="specific_type" label="测试类型" width="90">
           <template #default="scope">
-            <el-tag
-              :type="getSpecificTypeTagType(scope.row.specific_type)"
-              class="specific-type-tag"
-            >
+            <el-tag :type="getSpecificTypeTagType(scope.row.specific_type)"
+                    class="specific-type-tag">
               {{ getSpecificTypeName(scope.row.specific_type) }}
             </el-tag>
           </template>
@@ -240,10 +235,7 @@
 
         <el-table-column prop="case_level" label="等级" width="70">
           <template #default="scope">
-            <el-tag
-              :type="getCaseLevelTagType(scope.row.case_level)"
-              class="level-tag"
-            >
+            <el-tag :type="getCaseLevelTagType(scope.row.case_level)" class="level-tag">
               {{ `S${scope.row.case_level}` }}
             </el-tag>
           </template>
@@ -285,285 +277,44 @@
       </div>
     </div>
 
-    <!-- 用例详情抽屉（完全重构版） -->
-    <el-drawer
-      v-model="detailDrawerVisible"
-      title="用例详情"
-      direction="rtl"
-      :size="drawerWidth"
-      :with-header="true"
-      :resizable="true"
-      class="detail-drawer"
-    >
-      <!-- 抽屉内容区 -->
-      <div class="drawer-content">
-        <!-- 顶部信息栏 -->
-        <div class="detail-header">
-          <div class="detail-title">
-            <h2>{{ selectedTestCase?.case_name || '未选择用例' }}</h2>
-            <p class="sub-title">ID: {{ selectedTestCase?.id || '-' }} | 上次同步:
-              {{ formatTime(selectedTestCase?.update_time) }}</p>
-          </div>
-          <div class="detail-tags">
-            <el-tag
-              :type="selectedTestCase?.case_type === 'pytest' ? 'primary' : 'success'"
-              class="tag-type"
-            >
-              {{ selectedTestCase?.case_type === 'pytest' ? 'Python (Pytest)' : 'Java (TestNG)' }}
-            </el-tag>
-            <el-tag
-              :type="getSpecificTypeTagType(selectedTestCase?.specific_type)"
-              class="tag-type"
-            >
-              {{ getSpecificTypeName(selectedTestCase?.specific_type) }}
-            </el-tag>
-            <el-tag
-              :type="getCaseLevelTagType(selectedTestCase?.case_level)"
-              class="tag-priority"
-            >
-              S{{ selectedTestCase?.case_level !== undefined ? selectedTestCase?.case_level : '-' }}
-            </el-tag>
-          </div>
-        </div>
-
-        <div class="detail-grid">
-          <!-- 左侧信息面板 -->
-          <div class="info-panel">
-            <div class="panel-card">
-              <h3 class="panel-title">
-                <el-icon :size="18" class="panel-icon">
-                  <InfoFilled/>
-                </el-icon>
-                基础信息
-              </h3>
-              <div class="info-list">
-                <div class="info-item">
-                  <div class="info-label">
-                    <el-icon>
-                      <Document/>
-                    </el-icon>
-                    <span>项目名称</span>
-                  </div>
-                  <div class="info-value">{{ selectedTestCase?.git_project_name || '-' }}</div>
-                </div>
-                <div class="info-item">
-                  <div class="info-label">
-                    <el-icon>
-                      <Collection/>
-                    </el-icon>
-                    <span>用例名称</span>
-                  </div>
-                  <div class="info-value">{{ selectedTestCase?.case_name || '-' }}</div>
-                </div>
-                <div class="info-item">
-                  <div class="info-label">
-                    <el-icon>
-                      <Folder/>
-                    </el-icon>
-                    <span>用例路径</span>
-                  </div>
-                  <div class="info-value mono-text">{{ selectedTestCase?.case_path || '-' }}</div>
-                </div>
-                <div class="info-item">
-                  <div class="info-label">
-                    <el-icon>
-                      <User/>
-                    </el-icon>
-                    <span>作者</span>
-                  </div>
-                  <div class="info-value" v-if="selectedTestCase?.case_author.nickname">
-                    <el-tooltip
-                      :content="`${selectedTestCase?.case_author.nickname}(${selectedTestCase?.case_author.username})`"
-                      placement="top"
-                    >
-                      <span class="author-text">{{ selectedTestCase?.case_author.nickname }}</span>
-                    </el-tooltip>
-                  </div>
-                  <div class="info-value" v-else>{{
-                      selectedTestCase?.case_author.username
-                    }}
-                  </div>
-                </div>
-                <div class="info-item">
-                  <div class="info-label">
-                    <el-icon>
-                      <Coin/>
-                    </el-icon>
-                    <span>commit_id</span>
-                  </div>
-                  <div class="info-value">{{ selectedTestCase?.case_commit_id || '-' }}</div>
-                </div>
-              </div>
-            </div>
-
-            <!-- 额外信息卡片 -->
-            <div class="panel-card mt-4">
-              <h3 class="panel-title">
-                <el-icon :size="18" class="panel-icon">
-                  <Memo/>
-                </el-icon>
-                测试信息
-              </h3>
-              <div class="stat-grid">
-                <div class="stat-item">
-                  <div class="stat-label">执行次数</div>
-                  <div class="stat-value">42</div>
-                </div>
-                <div class="stat-item">
-                  <div class="stat-label">通过率</div>
-                  <div class="stat-value success">96%</div>
-                </div>
-                <div class="stat-item">
-                  <div class="stat-label">最近结果</div>
-                  <div class="stat-value warning">跳过</div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- 右侧代码面板 -->
-          <div class="code-panel">
-            <div class="panel-card code-card">
-              <div class="code-header">
-                <h3 class="panel-title">
-                  <el-icon :size="18" class="panel-icon">
-                    <Document/>
-                  </el-icon>
-                  代码预览
-                </h3>
-                <div class="code-actions">
-                  <span class="code-language">
-                    {{ selectedTestCase?.case_type === 'pytest' ? 'Python' : 'Java' }}
-                  </span>
-                  <el-button
-                    size="small"
-                    type="primary"
-                    @click="toggleFullscreen"
-                    :disabled="!testCaseContent || testCaseContent.includes('加载中')"
-                    class="fullscreen-btn"
-                  >
-                    <el-icon :size="16">
-                      <FullScreen/>
-                    </el-icon>
-                    全屏
-                  </el-button>
-                  <el-button
-                    size="small"
-                    type="primary"
-                    @click="copyCode"
-                    :disabled="!testCaseContent || testCaseContent.includes('加载中')"
-                    class="copy-btn"
-                  >
-                    <el-icon :size="16">
-                      <CopyDocument/>
-                    </el-icon>
-                    复制代码
-                  </el-button>
-                </div>
-              </div>
-              <div class="code-content-wrapper">
-                <pre v-if="!testCaseContent.includes('加载中')">
-                  <code
-                    class="code-content"
-                    :class="selectedTestCase?.case_type === 'pytest' ? 'language-python' : 'language-java'"
-                    ref="codeRef"
-                  >{{ testCaseContent || '无代码内容' }}</code>
-                </pre>
-                <div v-else class="code-loading">
-                  <el-icon class="loading-spinner is-loading">
-                    <Loading/>
-                  </el-icon>
-                  <p>加载代码中...</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-      <!-- 添加全屏对话框 -->
-      <el-dialog
-        v-model="fullscreenVisible"
-        :title="selectedTestCase?.case_name || '代码预览'"
-        fullscreen
-        transition="scale"
-        class="fullscreen-dialog"
-      >
-        <div class="fullscreen-code-container">
-      <pre v-if="!testCaseContent.includes('加载中')">
-        <code
-          class="fullscreen-code-content"
-          :class="selectedTestCase?.case_type === 'pytest' ? 'language-python' : 'language-java'"
-          ref="fullscreenCodeRef"
-        >{{ testCaseContent || '无代码内容' }}</code>
-      </pre>
-          <div v-else class="code-loading">
-            <el-icon class="loading-spinner is-loading">
-              <Loading/>
-            </el-icon>
-            <p>加载代码中...</p>
-          </div>
-        </div>
-        <template #footer>
-          <div class="fullscreen-dialog-footer">
-            <el-button @click="fullscreenVisible = false">关闭</el-button>
-            <el-button type="primary" @click="copyCodeFromFullscreen">复制代码</el-button>
-          </div>
-        </template>
-      </el-dialog>
-      <!-- 抽屉底部按钮 -->
-      <template #footer>
-        <div class="drawer-actions">
-          <el-button
-            type="default"
-            @click="detailDrawerVisible = false"
-            class="btn-secondary"
-          >
-            关闭
-          </el-button>
-        </div>
-      </template>
-    </el-drawer>
+    <!-- 用例详情抽屉（通过组件引入） -->
+    <TestCaseDetailDrawer
+      :visible="detailDrawerVisible"
+      @update:visible="detailDrawerVisible = $event"
+      :test-case="selectedTestCase"
+      :test-case-content="testCaseContent"
+      @close="handleCloseDrawer"
+    />
   </div>
 </template>
 
 <script setup>
-import {nextTick, onBeforeMount, onMounted, reactive, ref, watch} from 'vue'
+import {onMounted, reactive, ref, watch} from 'vue'
 import {useRoute} from 'vue-router'
-import {ElMessage, ElNotification} from 'element-plus'
+import {ElMessage} from 'element-plus'
 import {
-  Coin,
-  CopyDocument,
   Document,
-  Document as Collection,
-  Folder,
-  FullScreen,
-  InfoFilled,
-  Loading,
-  Memo,
+  Files,
+  FolderOpened,
+  Monitor,
   Refresh,
   Search,
-  User,
-  Files,
-  Monitor,
   Star,
-  FolderOpened
+  User
 } from '@element-plus/icons-vue'
 import {getCaseSourceList, getTestCaseContentDetail, getTestCaseList} from '@/network/api.js'
-import hljs from 'highlight.js/lib/core';
-import python from 'highlight.js/lib/languages/python';
-import java from 'highlight.js/lib/languages/java';
-import 'highlight.js/styles/a11y-dark.css';
+import hljs from 'highlight.js/lib/core'
+import python from 'highlight.js/lib/languages/python'
+import java from 'highlight.js/lib/languages/java'
+import 'highlight.js/styles/a11y-dark.css'
+import TestCaseDetailDrawer from '@/components/TestCaseDetailDrawer.vue'
 
 // 注册语言
-hljs.registerLanguage('python', python);
-hljs.registerLanguage('java', java);
+hljs.registerLanguage('python', python)
+hljs.registerLanguage('java', java)
 
 // 路由参数
 const route = useRoute()
-
-// 在数据状态部分添加全屏相关状态
-const fullscreenVisible = ref(false)
-const fullscreenCodeRef = ref(null)
 
 // 数据状态
 const testCaseList = ref([])
@@ -572,8 +323,6 @@ const detailDrawerVisible = ref(false)
 const selectedTestCase = ref(null)
 const projectOptions = ref([])
 const testCaseContent = ref('')
-const codeRef = ref(null)
-const drawerWidth = ref('80%')
 
 // 搜索表单
 const searchForm = reactive({
@@ -593,24 +342,6 @@ const pagination = reactive({
   total: 0
 })
 
-// 计算抽屉宽度（响应式处理）
-onBeforeMount(() => {
-  const updateDrawerWidth = () => {
-    if (window.innerWidth < 1200) {
-      drawerWidth.value = '90%'
-    } else {
-      drawerWidth.value = '80%'
-    }
-  }
-
-  updateDrawerWidth()
-  window.addEventListener('resize', updateDrawerWidth)
-
-  return () => {
-    window.removeEventListener('resize', updateDrawerWidth)
-  }
-})
-
 // 单元格样式函数
 const cellStyle = ({rowIndex}) => {
   return {
@@ -626,52 +357,39 @@ onMounted(() => {
   fetchTestCaseList()
 })
 
-// 监听用例名称和作者输入框的变化，自动触发搜索
+// 监听输入框变化自动触发搜索
 watch(
   () => searchForm.case_name,
   (newVal, oldVal) => {
-    if (newVal !== oldVal) {
-      handleSearch()
-    }
+    if (newVal !== oldVal) handleSearch()
   }
 )
 
 watch(
   () => searchForm.case_author,
   (newVal, oldVal) => {
-    if (newVal !== oldVal) {
-      handleSearch()
-    }
+    if (newVal !== oldVal) handleSearch()
   }
 )
 
 watch(
   () => searchForm.case_path,
   (newVal, oldVal) => {
-    if (newVal !== oldVal) {
-      handleSearch()
-    }
+    if (newVal !== oldVal) handleSearch()
   }
 )
 
 // 获取项目选项列表
 const fetchProjectOptions = async () => {
   try {
-    const params = {
-      workspaceId: route.params.id
-    }
-
+    const params = {workspaceId: route.params.id}
     const res = await getCaseSourceList(params)
-
     if (res.code === 0) {
       projectOptions.value = res.data.map(item => ({
         value: item.caseSourceValue?.projectId,
         label: `${item.caseSourceValue?.projectId}-${item.caseProjectName}`
       }))
-
       projectOptions.value = projectOptions.value.filter(option => option.value)
-
-      // 去重处理
       const uniqueOptions = []
       const seenValues = new Set()
       projectOptions.value.forEach(option => {
@@ -705,15 +423,12 @@ const fetchTestCaseList = async () => {
       page_num: pagination.page_num,
       page_size: pagination.page_size
     }
-
     Object.keys(params).forEach(key => {
       if (params[key] === '' || params[key] === null || params[key] === undefined) {
         delete params[key]
       }
     })
-
     const res = await getTestCaseList(params)
-
     if (res.code === 0) {
       testCaseList.value = res.data.items || []
       pagination.total = res.data.total || 0
@@ -743,133 +458,52 @@ const handleReset = () => {
 }
 
 // 分页大小改变
-const handleSizeChange = (val) => {
+const handleSizeChange = val => {
   pagination.page_size = val
   pagination.page_num = 1
   fetchTestCaseList()
 }
 
 // 当前页改变
-const handleCurrentChange = (val) => {
+const handleCurrentChange = val => {
   pagination.page_num = val
   fetchTestCaseList()
 }
 
-// 添加行号处理函数
-const addLineNumbers = (code) => {
-  const lines = code.split('\n');
-  return lines.map((line, index) =>
-    `<span class="line-number">${index + 1}</span>${line}`
-  ).join('\n');
-};
-
-
 // 打开详情抽屉的方法
-const openDetailDrawer = async (row) => {
-  selectedTestCase.value = row;
-  testCaseContent.value = '加载中...';
-  detailDrawerVisible.value = true;
+const openDetailDrawer = async row => {
+  selectedTestCase.value = row
+  testCaseContent.value = '加载中...'
+  detailDrawerVisible.value = true
 
   try {
     const res = await getTestCaseContentDetail({
       case_uuid: row.case_uuid,
       case_commit_id: row.case_commit_id
-    });
-
+    })
     if (res.code === 0) {
-      testCaseContent.value = res.data.case_content || '无内容';
-
-      nextTick(() => {
-        if (codeRef.value) {
-          codeRef.value.classList.remove('hljs');
-          codeRef.value.removeAttribute('data-highlighted');
-          // 添加行号处理
-          const highlightedCode = hljs.highlightElement(codeRef.value);
-          if (highlightedCode) {
-            codeRef.value.innerHTML = addLineNumbers(codeRef.value.innerHTML);
-          } else {
-            // 如果 highlightElement 没有返回结果，直接处理 innerHTML
-            const originalContent = codeRef.value.textContent;
-            const language = selectedTestCase.value?.case_type === 'pytest' ? 'python' : 'java';
-            const highlighted = hljs.highlight(originalContent, {language}).value;
-            codeRef.value.innerHTML = addLineNumbers(highlighted);
-          }
-        }
-      });
+      testCaseContent.value = res.data.case_content || '无内容'
     } else {
-      testCaseContent.value = '获取内容失败: ' + (res.message || '未知错误');
+      testCaseContent.value = '获取内容失败: ' + (res.message || '未知错误')
     }
   } catch (error) {
-    testCaseContent.value = '获取内容失败: ' + error.message;
+    testCaseContent.value = '获取内容失败: ' + error.message
   }
-};
-
-// 复制代码
-const copyCode = () => {
-  navigator.clipboard.writeText(testCaseContent.value).then(() => {
-    ElNotification({
-      title: '成功',
-      message: '代码已复制到剪贴板',
-      type: 'success',
-      duration: 2000
-    })
-  }).catch(() => {
-    ElNotification({
-      title: '失败',
-      message: '复制失败，请手动复制',
-      type: 'error',
-      duration: 2000
-    })
-  })
 }
 
-// 在方法部分添加全屏切换和复制方法
-const toggleFullscreen = () => {
-  fullscreenVisible.value = true;
-  nextTick(() => {
-    if (fullscreenCodeRef.value) {
-      // 重置内容以避免重复添加行号
-      fullscreenCodeRef.value.innerHTML = '';
-      fullscreenCodeRef.value.classList.remove('hljs');
-      fullscreenCodeRef.value.removeAttribute('data-highlighted');
-
-      // 获取原始内容并进行高亮处理
-      const originalContent = testCaseContent.value || '无代码内容';
-      const language = selectedTestCase.value?.case_type === 'pytest' ? 'python' : 'java';
-      const highlighted = hljs.highlight(originalContent, {language}).value;
-
-      // 添加行号
-      fullscreenCodeRef.value.innerHTML = addLineNumbers(highlighted);
-    }
-  });
-};
-
-const copyCodeFromFullscreen = () => {
-  navigator.clipboard.writeText(testCaseContent.value).then(() => {
-    ElNotification({
-      title: '成功',
-      message: '代码已复制到剪贴板',
-      type: 'success',
-      duration: 2000
-    })
-  }).catch(() => {
-    ElNotification({
-      title: '失败',
-      message: '复制失败，请手动复制',
-      type: 'error',
-      duration: 2000
-    })
-  })
+// 关闭抽屉回调
+const handleCloseDrawer = () => {
+  detailDrawerVisible.value = false
 }
 
 // 格式化时间
-const formatTime = (timeString) => {
+const formatTime = timeString => {
   if (!timeString) return '-'
   return new Date(timeString).toLocaleString('zh-CN')
 }
 
 // 获取测试类型名称
-const getSpecificTypeName = (type) => {
+const getSpecificTypeName = type => {
   const typeMap = {
     10: 'Web',
     11: 'H5',
@@ -879,7 +513,7 @@ const getSpecificTypeName = (type) => {
 }
 
 // 获取测试类型标签类型
-const getSpecificTypeTagType = (type) => {
+const getSpecificTypeTagType = type => {
   const typeMap = {
     10: 'primary',
     11: 'success',
@@ -889,23 +523,21 @@ const getSpecificTypeTagType = (type) => {
 }
 
 // 获取用例等级标签类型
-const getCaseLevelTagType = (level) => {
+const getCaseLevelTagType = level => {
   const levelMap = {
-    0: 'danger',    // S0
-    1: 'warning', // S1
-    2: 'primary', // S2
-    3: 'info'  // S3
+    0: 'danger',
+    1: 'warning',
+    2: 'primary',
+    3: 'info'
   }
   return levelMap[level] || 'info'
 }
 
 // 从路径中提取文件名
-const getFileNameFromPath = (path) => {
+const getFileNameFromPath = path => {
   if (!path) return '-'
-  // 获取最后一个斜杠后的部分作为文件名
   return path.split('/').pop() || path
 }
-
 </script>
 
 <style scoped>
@@ -1227,506 +859,5 @@ const getFileNameFromPath = (path) => {
   background-color: #f0f7ff;
   color: #667eea;
   border-color: #bfdbfe;
-}
-
-/* 抽屉样式保持原有样式 */
-:deep(.detail-drawer .el-drawer__header) {
-  display: none; /* 隐藏默认标题栏 */
-}
-
-:deep(.detail-drawer .el-drawer__body) {
-  padding: 24px;
-  overflow: hidden;
-}
-
-.drawer-content {
-  height: calc(100vh - 120px);
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-}
-
-.detail-header {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  padding-bottom: 16px;
-  border-bottom: 1px solid #e2e8f0;
-  margin-bottom: 0;
-}
-
-.detail-title h2 {
-  margin: 0;
-  font-size: 20px;
-  font-weight: 600;
-  color: #1e293b;
-  line-height: 1.3;
-}
-
-.sub-title {
-  margin: 4px 0 0 0;
-  font-size: 14px;
-  color: #64748b;
-}
-
-.detail-tags {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-:deep(.tag-type) {
-  font-size: 13px;
-  padding: 4px 12px;
-  border-radius: 6px;
-  background-color: rgba(64, 158, 255, 0.1);
-  color: #3b82f6;
-  border: none;
-  transition: all 0.2s ease;
-}
-
-:deep(.tag-type:hover) {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
-}
-
-:deep(.tag-priority) {
-  font-size: 13px;
-  padding: 4px 12px;
-  border-radius: 6px;
-  font-weight: 500;
-  border: none;
-  transition: all 0.2s ease;
-}
-
-.detail-grid {
-  display: grid;
-  grid-template-columns: 320px 1fr;
-  gap: 24px;
-  flex: 1;
-  overflow: hidden;
-  margin-top: 10px;
-}
-
-.panel-card {
-  background: #ffffff;
-  border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-  overflow: hidden;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-  flex-shrink: 0;
-}
-
-.panel-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
-}
-
-.panel-title {
-  margin: 0;
-  padding: 16px 20px;
-  font-size: 16px;
-  font-weight: 600;
-  color: #1e293b;
-  border-bottom: 1px solid #f1f5f9;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.panel-icon {
-  color: #3b82f6;
-}
-
-.mt-4 {
-  margin-top: 16px;
-  flex-shrink: 0;
-}
-
-.info-panel {
-  display: flex;
-  flex-direction: column;
-  overflow-y: auto;
-  padding-right: 8px;
-  max-height: 100%;
-}
-
-.info-list {
-  padding: 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.info-item {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 12px 16px;
-  border-radius: 8px;
-  background-color: #f8fafc;
-  transition: all 0.3s ease;
-  border: 1px solid #eaeaea;
-}
-
-.info-item:hover {
-  background-color: #f0f9ff;
-  border-color: #bae6fd;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
-  transform: translateY(-2px);
-}
-
-.info-label {
-  font-size: 13px;
-  color: #64748b;
-  font-weight: 500;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.info-label .el-icon {
-  font-size: 14px;
-  color: #3b82f6;
-}
-
-.info-value {
-  font-size: 14px;
-  color: #1e293b;
-  word-break: break-all;
-  line-height: 1.2;
-  font-weight: 500;
-}
-
-.mono-text {
-  font-family: 'Fira Code', monospace;
-  font-size: 13px;
-  color: #3b82f6;
-  background-color: rgba(59, 130, 246, 0.05);
-  padding: 2px 4px;
-  border-radius: 4px;
-}
-
-.stat-grid {
-  padding: 20px;
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
-}
-
-.stat-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 12px 8px;
-  background-color: #f8fafc;
-  border-radius: 8px;
-}
-
-.stat-label {
-  font-size: 12px;
-  color: #64748b;
-  margin-bottom: 6px;
-}
-
-.stat-value {
-  font-size: 18px;
-  font-weight: 600;
-  color: #1e293b;
-}
-
-.stat-value.success {
-  color: #10b981;
-}
-
-.stat-value.warning {
-  color: #f59e0b;
-}
-
-.code-panel {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  overflow: hidden;
-  margin-top: 0;
-}
-
-.code-card {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  background-color: #1e1e1e;
-  border-radius: 12px;
-  overflow: hidden;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-}
-
-.code-card .panel-title {
-  background: linear-gradient(to right, #1e293b, #0f172a);
-  color: #e2e8f0;
-  border-bottom: 1px solid #334155;
-  padding: 12px 10px;
-}
-
-.code-card .panel-icon {
-  color: #94a3b8;
-}
-
-.code-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0 15px;
-}
-
-.code-actions {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.code-language {
-  font-size: 13px;
-  color: #94a3b8;
-  background-color: #334155;
-  padding: 4px 10px;
-  border-radius: 6px;
-  font-family: 'Fira Code', monospace;
-  margin-right: 15px;
-}
-
-.copy-btn {
-  background-color: #3b82f6;
-  border-color: #3b82f6;
-  color: white;
-  transition: all 0.2s;
-  padding: 6px 12px;
-  border-radius: 6px;
-  margin-right: 20px;
-}
-
-.copy-btn:hover {
-  background-color: #2563eb;
-  border-color: #2563eb;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
-}
-
-.code-content :deep(.line-number),
-.fullscreen-code-content :deep(.line-number) {
-  display: inline-block;
-  width: 30px;
-  padding-right: 10px;
-  text-align: right;
-  color: #858585;
-  user-select: none;
-  border-right: 1px solid #444;
-  margin-right: 10px;
-  opacity: 0.8;
-  font-size: 12px;
-}
-
-.code-content-wrapper {
-  flex: 1;
-  overflow: auto;
-  padding: 0 15px 15px 15px;
-  position: relative;
-}
-
-.code-content {
-  display: block;
-  padding: 5px 15px 15px 15px;
-  overflow-x: auto;
-  font-size: 13px;
-  line-height: 1.5;
-  color: #dadde5;
-  opacity: 0.95;
-  border-radius: 8px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  text-rendering: optimizeLegibility;
-  white-space: pre;
-  min-width: fit-content;
-  margin: 0;
-}
-
-.code-loading {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  color: #94a3b8;
-  gap: 12px;
-}
-
-.loading-spinner {
-  width: 40px;
-  height: 40px;
-  color: #3b82f6;
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-:deep(.detail-drawer .el-drawer__footer) {
-  padding: 10px 24px;
-  border-top: 1px solid #e2e8f0;
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
-  background-color: #ffffff;
-  border-radius: 0 0 0 12px;
-}
-
-.drawer-actions {
-  display: flex;
-  gap: 12px;
-  width: 100%;
-  justify-content: flex-end;
-}
-
-.btn-secondary {
-  padding: 8px 20px;
-  font-size: 14px;
-  border-radius: 6px;
-  transition: all 0.2s ease;
-}
-
-.btn-secondary:hover {
-  background-color: #f1f5f9;
-  transform: translateY(-2px);
-}
-
-.fullscreen-btn {
-  background-color: #67c23a;
-  border-color: #67c23a;
-  color: white;
-  transition: all 0.2s;
-  padding: 6px 12px;
-  border-radius: 6px;
-  margin-right: 1px;
-}
-
-.fullscreen-btn:hover {
-  background-color: #5daf34;
-  border-color: #5daf34;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(103, 194, 58, 0.3);
-}
-
-.fullscreen-btn:disabled {
-  background-color: #f5f7fa;
-  border-color: #e4e7ed;
-  color: #c0c4cc;
-}
-
-:deep(.fullscreen-dialog .el-dialog__header) {
-  background: linear-gradient(to right, #1e293b, #0f172a);
-  padding: 15px 20px;
-}
-
-:deep(.fullscreen-dialog .el-dialog__title) {
-  color: #e2e8f0;
-  font-weight: 600;
-}
-
-:deep(.fullscreen-dialog .el-dialog__headerbtn .el-dialog__close) {
-  color: #94a3b8;
-}
-
-:deep(.fullscreen-dialog .el-dialog__headerbtn .el-dialog__close:hover) {
-  color: #ffffff;
-}
-
-:deep(.fullscreen-dialog .el-dialog__body) {
-  padding: 0;
-  background-color: #181818;
-  height: calc(100vh - 125px);
-}
-
-.fullscreen-code-container {
-  height: 96%;
-  overflow: auto;
-  padding: 0 20px 20px 20px;
-}
-
-.fullscreen-code-content {
-  display: block;
-  padding: 0 15px 1px 15px;
-  overflow-x: auto;
-  font-size: 14px;
-  line-height: 1.5;
-  color: #f3f4f6;
-  background-color: #1e1e1e;
-  border-radius: 8px;
-  white-space: pre;
-  min-width: fit-content;
-  margin: 0;
-}
-
-:deep(.fullscreen-dialog .el-dialog__footer) {
-  background-color: #ffffff;
-  padding: 12px 20px;
-  border-top: 1px solid #e2e8f0;
-}
-
-.fullscreen-dialog-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
-}
-
-/* 响应式调整 */
-@media (max-width: 1200px) {
-  .detail-grid {
-    grid-template-columns: 280px 1fr;
-  }
-}
-
-@media (max-width: 992px) {
-  .detail-grid {
-    grid-template-columns: 1fr;
-    grid-template-rows: auto 1fr;
-  }
-
-  .info-panel {
-    max-height: 360px;
-  }
-}
-
-@media (max-width: 768px) {
-  :deep(.detail-drawer .el-drawer__body) {
-    padding: 16px;
-  }
-
-  .detail-title h2 {
-    font-size: 18px;
-  }
-
-  .stat-grid {
-    grid-template-columns: 1fr 1fr;
-  }
-
-  .stat-item:nth-child(3) {
-    grid-column: span 2;
-  }
-}
-
-/* 统一设置选择器和输入框的圆角 */
-:deep(.el-input__wrapper),
-:deep(.el-select__wrapper) {
-  border-radius: 12px !important;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05) !important;
-  border: 1px solid rgba(235, 238, 245, 0.5) !important;
-  transition: all 0.3s ease;
 }
 </style>
