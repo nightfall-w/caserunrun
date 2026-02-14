@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 
 from app.case_handler.case_parser import GitCaseParser
 from app.case_handler.models import PytestCaseModel, TestNGCaseModel
+from app.core.orm_tools import model_to_dict
 from app.testplan.models import TestPlanModel, TestPlanPytestCaseModel, TestPlanTestNGCaseModel, CaseType, \
     TestTaskModel, TaskJobModel
 from app.user.controller import get_nickname_by_username
@@ -591,6 +592,7 @@ class TestPlanCRUD:
             if username not in nickname_cache:
                 nickname_cache[username] = get_nickname_by_username(db=self.db, username=username)
             nickname = nickname_cache[username]
+            job = model_to_dict(job)
             job.case_author = {
                 "username": username,
                 "nickname": nickname
