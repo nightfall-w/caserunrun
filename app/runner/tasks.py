@@ -108,7 +108,9 @@ def trigger_testplan(test_plan_id: int, trigger_user: str) -> bool:
                            time_consuming=0,
                            case_commit_id=case.case_commit_id,
                            case_author=case.case_author,
-                           git_project_name=case.git_project_name
+                           git_project_name=case.git_project_name,
+                           case_level=case.case_level,
+                           specific_type=case.specific_type
                            )
         curd.db.add(job)
         curd.db.commit()
