@@ -6,6 +6,8 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
+from app.case_handler.models import PytestCaseModel, TestNGCaseModel
+from app.case_source.models import CaseSourceRelationModel
 from app.core.auth_middleware import get_current_user
 from app.core.database import get_sync_db
 from app.core.response import api_response, HttpErrcode
@@ -122,8 +124,18 @@ def get_workspace_detail(
         "workspace_desc": workspace.workspace_desc,
         "create_user": workspace.create_user,
         "update_user": workspace.update_user,
-        "manager_info_list": manager_list,
+        "manager_info_list": manager_list
     }
+
+    pytest_case_count = db.query(PytestCaseModel).filter(PytestCaseModel.workspace_id == workspace_id).count()
+    testng_case_count = db.query(TestNGCaseModel).filter(TestNGCaseModel.workspace_id == workspace_id).count()
+    data["pytest_case_count"], data["testng_case_count"], data[
+        "total_case_count"] = pytest_case_count, testng_case_count, pytest_case_count + testng_case_count
+
+    repositories = db.query(CaseSourceRelationModel).filter(
+        CaseSourceRelationModel.workspace_id == workspace_id).count()
+    data["repository_count"] = repositories
+
     return api_response(
         code=HttpErrcode.SUCCESS,
         data=data

@@ -153,10 +153,10 @@ export default {
           // 这里可以添加获取统计数据的逻辑
           // 暂时使用模拟数据
           this.statistics = {
-            totalCases: 128,
-            repositories: 5,
-            pytestCases: 76,
-            testngCases: 52
+            totalCases: data.total_case_count,
+            repositories: data.repository_count,
+            pytestCases: data.pytest_case_count,
+            testngCases: data.testng_case_count
           };
         } else {
           this.$message.error(res.message || '获取工作空间详情失败');

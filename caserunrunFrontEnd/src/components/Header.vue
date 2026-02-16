@@ -12,7 +12,7 @@
 <!--          class="cursor-pointer"-->
 <!--          @click="goHome"-->
 <!--        />-->
-        <div class="system-title flex flex-col">
+        <div class="system-title flex flex-col" @click="goHome">
           <span class="text-lg font-bold text-white">
             聚合测试
             <span class="text-yellow-300">实验室</span>

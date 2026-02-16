@@ -214,10 +214,6 @@ class SettingCRUD:
                 raise ValueError("工作空间Git配置不完整")
             return gitlab_url_config.value, token_config.value
 
-    def get_server_domain(self):
-        service_domain_config = self.get_system_config_by_key("SERVER_DOMAIN")
-        return service_domain_config.value if service_domain_config else get_host_ip()
-
 
 def get_setting_crud(db: Session) -> SettingCRUD:
     """
