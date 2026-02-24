@@ -36,7 +36,7 @@ def generate_report(xml_dir: str, report_html_path: str, description: str = None
     env = Environment(loader=FileSystemLoader(os.path.join(os.path.dirname(__file__), 'templates')))
     template = env.get_template('report_template.html')
     results['desc'] = description
-    results['title'] = os.path.basename(report_html_path)
+    results['title'] = os.path.basename(report_html_path).replace('.html', '.java')
     html_content = template.render(results=results)
 
     # 创建输出目录并写入HTML报告文件
