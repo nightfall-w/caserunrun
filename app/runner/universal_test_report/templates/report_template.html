@@ -361,6 +361,56 @@
             margin-right: auto;
         }
 
+                }
+
+        /* 大屏设备适配（例如大于等于 1200px） */
+        @media (min-width: 1920px) {
+            /* 缩小容器左右内边距 */
+            .container {
+                max-width: 1800px; /* 可根据需求调整 */
+                padding-left: 1rem;
+                padding-right: 1rem;
+            }
+
+            /* 缩小页面主体顶部和底部外边距 */
+            body {
+                padding-top: 1rem;
+                padding-bottom: 1rem;
+            }
+
+            /* 缩小头部外边距 */
+            header {
+                margin-bottom: 1rem;
+                padding: 1.5rem 1rem;
+            }
+
+            /* 缩小卡片组件之间的垂直间距 */
+            .card {
+                margin-bottom: 1rem;
+            }
+
+            /* 缩小统计卡片容器的底部外边距 */
+            .stat-container {
+                margin-bottom: 1rem;
+            }
+
+            /* 缩小图表容器的顶部外边距 */
+            .chart-container {
+                margin-top: 1rem;
+            }
+
+            /* 缩小表格卡片的内边距 */
+            .card-body {
+                padding: 1.2rem;
+            }
+
+            /* 缩小页脚外边距 */
+            footer {
+                margin-top: 1.5rem;
+                padding: 1.5rem 1rem;
+            }
+        }
+
         /* 大屏设备适配（例如大于等于 1200px） */
         @media (min-width: 1200px) {
             /* 缩小容器左右内边距 */
