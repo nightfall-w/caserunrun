@@ -154,7 +154,7 @@ def create_python_venv(workspace_id, python_version: str, project_name: str, pro
 
         # 安装我的测试报告生成工具
         result = subprocess.run(
-            [pip_exec, "install" "pytest-polymeric-report"],
+            [pip_exec, "install", "pytest-polymeric-report"],
             check=True, capture_output=True, text=True
         )
         print("STDOUT:", result.stdout)
