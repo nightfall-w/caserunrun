@@ -14,11 +14,11 @@
 <!--        />-->
         <div class="system-title flex flex-col" @click="goHome">
           <span class="text-lg font-bold text-white">
-            聚合测试
-            <span class="text-yellow-300">实验室</span>
+            CaseRunRun
+            <span class="text-yellow-300">聚合测试平台</span>
           </span>
           <span class="text-xs text-gray-300 mt-0.5">
-            多框架测试平台:TestNG,Pytest,Selenium,Playwright……
+            支持多种测试框架:TestNG,Pytest,Selenium,Playwright……
           </span>
         </div>
       </div>
