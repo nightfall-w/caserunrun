@@ -13,6 +13,11 @@ ENV PATH="$PYENV_ROOT/bin:$PYENV_ROOT/shims:$MAVEN_HOME/bin:$PATH"
 # 复制系统安装包
 COPY docker_build/system/ /tmp/system/
 
+# 先使用Ubuntu默认源安装ca-certificates
+RUN apt-get update && apt-get install -y \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
 # 使用本地sources.list
 RUN cp /tmp/system/sources.list /etc/apt/sources.list
 
@@ -79,9 +84,8 @@ RUN apt-get update && apt-get install -y \
     xdg-utils \
     && rm -rf /var/lib/apt/lists/*
 
-# 安装本地deb包
-RUN dpkg -i /tmp/system/ca-certificates_20230311ubuntu0.22.04.1_all.deb && \
-    dpkg -i /tmp/system/google-chrome-stable_140.0.7339.127-1_amd64.deb || apt-get -f install -y
+# 安装Chrome浏览器
+RUN dpkg -i /tmp/system/google-chrome-stable_140.0.7339.127-1_amd64.deb || apt-get -f install -y
 
 # 安装Chrome驱动
 RUN chmod +x /tmp/system/chromedriver && \
@@ -91,6 +95,10 @@ RUN chmod +x /tmp/system/chromedriver && \
 RUN mkdir -p /usr/share/fonts/truetype/msyh && \
     cp /tmp/system/msyh.ttc /usr/share/fonts/truetype/msyh/ && \
     fc-cache -f -v
+
+# 设置pyenv的Python构建镜像源
+ENV PYTHON_BUILD_MIRROR_URL=https://registry.npmmirror.com/-/binary/python
+ENV PYTHON_BUILD_MIRROR_URL_SKIP_CHECKSUM=1
 
 # 安装pyenv
 RUN git clone https://github.com/pyenv/pyenv.git $PYENV_ROOT \
