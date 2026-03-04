@@ -109,7 +109,7 @@ RUN pyenv install 3.8.10 && \
     pyenv install 3.9.10 && \
     pyenv install 3.10.4 && \
     pyenv install 3.11.0 && \
-    pyenv global 3.9.10
+    pyenv global 3.11.0
 
 # 配置Java替代方案
 RUN update-alternatives --install /usr/bin/java java /usr/lib/jvm/java-8-openjdk-amd64/bin/java 100 && \
