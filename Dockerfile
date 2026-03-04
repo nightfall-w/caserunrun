@@ -136,7 +136,7 @@ WORKDIR /app
 COPY . /app
 
 # 配置pip源
-COPY docker_build/python/pip.conf /etc/pip.conf
+# COPY docker_build/python/pip.conf /etc/pip.conf
 
 # 配置Maven设置
 RUN mkdir -p /etc/maven
