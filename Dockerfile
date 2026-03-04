@@ -143,7 +143,7 @@ RUN mkdir -p /etc/maven
 COPY docker_build/java/settings.xml /etc/maven/settings.xml
 
 # 安装项目依赖
-RUN pip3 install --no-cache-dir -r requirements.txt
+RUN pip3 install --no-cache-dir --verbose -r requirements.txt
 
 # 安装测试报告生成工具
 RUN pip3 install pytest-polymeric-report
