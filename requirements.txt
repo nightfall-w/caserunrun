@@ -12,12 +12,12 @@ pymysql==1.0.2
 redis==5.0.0
 
 # 任务调度与队列
-funboost
-APScheduler
+funboost==53.9
+APScheduler==3.11.1
 
 # 测试相关
 pytest==7.2.1
-pytest-polymeric-report
+pytest-polymeric-report==0.1.9
 
 # GitLab 集成
 python-gitlab==3.14.0
