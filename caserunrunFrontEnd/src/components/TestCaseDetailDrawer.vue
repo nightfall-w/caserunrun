@@ -183,21 +183,16 @@
               </div>
               <!-- 代码内容 -->
               <div v-else class="code-container" ref="normalCodeContainer">
-                <div class="line-numbers" ref="normalLineNumbers">
-                  <div
-                    v-for="(line, index) in testCaseContent.split('\n')"
-                    :key="`normal-${index}`"
-                    class="line-number"
-                  >
-                    {{ index + 1 }}
-                  </div>
-                </div>
-                <pre class="code-pre" ref="normalCodePre">
+                <pre class="code-pre-with-lines" ref="normalCodePre">
                   <code
                     class="code-content"
                     :class="testCase?.case_type === 'pytest' ? 'language-python' : 'language-java'"
-                    v-html="highlightedCode"
-                  ></code>
+                  >
+                    <span v-for="(line, index) in testCaseContent.split('\n')" :key="`normal-${index}`" class="code-line">
+                      <span class="line-number">{{ index + 1 }}</span>
+                      <span class="line-content" v-html="highlightLine(line, index)"></span>
+                    </span>
+                  </code>
                 </pre>
               </div>
             </div>
@@ -226,21 +221,16 @@
         </div>
         <!-- 全屏代码内容 -->
         <div v-else class="code-container fullscreen-code-container-inner">
-          <div class="line-numbers">
-            <div
-              v-for="(line, index) in testCaseContent.split('\n')"
-              :key="`fullscreen-${index}`"
-              class="line-number"
-            >
-              {{ index + 1 }}
-            </div>
-          </div>
-          <pre class="code-pre fullscreen-code-pre">
+          <pre class="code-pre-with-lines fullscreen-code-pre" ref="fullCodeRef">
             <code
-              ref="fullCodeRef"
-              class="fullscreen-code-content"
+              class="code-content fullscreen-code-content"
               :class="testCase?.case_type === 'pytest' ? 'language-python' : 'language-java'"
-            ></code>
+            >
+              <span v-for="(line, index) in testCaseContent.split('\n')" :key="`fullscreen-${index}`" class="code-line">
+                <span class="line-number">{{ index + 1 }}</span>
+                <span class="line-content" v-html="highlightLine(line, index)"></span>
+              </span>
+            </code>
           </pre>
         </div>
       </div>
@@ -334,6 +324,16 @@ const highlightedCode = computed(() => {
   }
 });
 
+// 高亮单行代码
+const highlightLine = (line, index) => {
+  if (!line) return '';
+  try {
+    return hljs.highlight(line, {language: lang.value}).value;
+  } catch (e) {
+    return line;
+  }
+};
+
 // 打开全屏对话框
 const openFullscreen = () => {
   fullscreenVisible.value = true;
@@ -346,24 +346,32 @@ const closeFullscreen = () => {
 
 // 全屏代码高亮（每次打开都执行）
 const doHighlightFull = () => {
-  if (!fullCodeRef.value || !props.testCaseContent) return;
-  // 重置内容并高亮
-  fullCodeRef.value.textContent = props.testCaseContent;
-  fullCodeRef.value.className = `fullscreen-code-content language-${lang.value}`;
-  hljs.highlightElement(fullCodeRef.value);
+  // 现在全屏模式使用与非全屏模式相同的结构，通过v-html和highlightLine自动处理高亮
+  // 不需要手动设置内容和高亮
 };
 
-// 同步滚动：核心修复 - 精准绑定当前容器的滚动事件
+// 同步滚动：核心修复 - 现在行号和代码在同一容器中，无需单独同步
 const syncScroll = () => {
   // 非全屏代码区域同步
-  if (normalCodePre.value && normalLineNumbers.value) {
-    // 移除旧的滚动事件，避免重复绑定
-    normalCodePre.value.onscroll = null;
-    // 绑定新的滚动事件：行号跟随代码滚动
-    normalCodePre.value.onscroll = () => {
-      normalLineNumbers.value.scrollTop = normalCodePre.value.scrollTop;
-      normalLineNumbers.value.scrollLeft = normalCodePre.value.scrollLeft;
+  if (normalCodePre.value) {
+    // 确保代码容器高度正确
+    const syncScrollHeight = () => {
+      if (normalCodePre.value) {
+        // 确保容器高度正确
+        normalCodePre.value.style.height = '100%';
+      }
     };
+    
+    // 初始同步高度
+    syncScrollHeight();
+    
+    // 监听窗口大小变化，重新同步高度
+    window.addEventListener('resize', syncScrollHeight);
+    
+    // 监听代码内容变化，重新同步高度
+    watch(() => props.testCaseContent, () => {
+      setTimeout(syncScrollHeight, 100);
+    });
   }
 };
 
@@ -750,76 +758,95 @@ const getCaseLevelTagType = (level) => {
 
 /* 代码容器样式 */
 .code-container {
-  display: flex;
   width: 100%;
   height: 100%;
   overflow: hidden;
 }
 
-/* 行号栏样式 - 核心修复：统一行距 + 可滚动 */
-.line-numbers {
-  width: 60px;
-  min-width: 60px;
-  padding: 18px 0;
-  background-color: #181818;
-  border-right: 1px solid #333;
-  overflow: hidden;
-  flex-shrink: 0;
-  /* 禁止行号容器滚动 */
-  overflow-y: inherit;
-  /* 隐藏滚动条 */
-  scrollbar-width: none;
-}
-
-.line-numbers::-webkit-scrollbar {
-  display: none;
-}
-
-/* 核心修复：行号与代码行距完全统一 */
-.line-number {
-  height: 22px;
-  line-height: 22px;
-  text-align: right;
-  padding: 0 12px;
-  font-size: 13px;
-  color: #858585;
-  user-select: none;
-  white-space: nowrap;
-  font-family: 'Fira Code', monospace;
-}
-
-/* 代码内容栏样式 - 核心修复：统一行距 */
-.code-pre {
-  flex: 1;
-  margin: 0;
-  padding: 0;
+/* 带行号的代码容器 */
+.code-pre-with-lines {
+  margin: 0 !important;
+  padding: 0 !important;
   overflow: auto;
   height: 100%;
   background-color: #1e1e1e;
-  /* 统一字体 */
   font-family: 'Fira Code', monospace;
+  /* 移除默认的pre标签边距 */
+  line-height: 22px;
+  /* 确保没有默认的空白 */
+  white-space: pre-wrap;
 }
 
 /* 核心修复：代码内容行距与行号完全一致 */
 .code-content {
   display: block;
-  padding: 0 20px;
-  font-size: 13px;
-  line-height: 22px; /* 和行号的line-height一致 */
-  color: #dadde5;
   background-color: transparent;
+  font-family: 'Fira Code', monospace;
+  margin: 0 !important;
+  padding: 0 !important;
+  white-space: normal;
+}
+
+/* 代码行样式 */
+.code-line {
+  display: flex;
+  min-height: 22px;
+  line-height: 22px;
+  font-size: 13px;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* 行号样式 */
+.code-line .line-number {
+  width: 40px;
+  min-width: 40px;
+  padding: 0 8px;
+  background-color: #181818;
+  border-right: 1px solid #333;
+  text-align: right;
+  color: #858585;
+  user-select: none;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* 行内容样式 */
+.code-line .line-content {
+  flex: 1;
+  padding: 0 20px;
+  color: #dadde5;
   white-space: pre;
   min-width: fit-content;
-  font-family: 'Fira Code', monospace;
+  margin: 0 !important;
+  padding: 0 20px !important;
 }
 
 /* 代码加载样式 */
 .code-content-wrapper {
   flex: 1;
   overflow: hidden;
-  padding: 0;
+  padding: 0 !important;
   position: relative;
   height: calc(100% - 48px);
+  margin: 0 !important;
+}
+
+/* 确保所有相关容器都没有边距 */
+.code-container {
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* 修复pre标签的默认样式 */
+pre {
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+code {
+  margin: 0 !important;
+  padding: 0 !important;
 }
 
 .code-loading {
@@ -940,17 +967,12 @@ const getCaseLevelTagType = (level) => {
   overflow: auto;
   background-color: #1e1e1e;
   font-family: 'Fira Code', monospace;
+  line-height: 22px;
 }
 
 .fullscreen-code-content {
   display: block;
-  padding: 2px 25px;
-  font-size: 13px;
-  line-height: 22px; /* 统一全屏行距 */
-  color: #dadde5;
   background-color: transparent;
-  white-space: pre;
-  min-width: fit-content;
   font-family: 'Fira Code', monospace;
 }
 
